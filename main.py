@@ -15,7 +15,7 @@ def __():
     import numpy as np
     from numpy import sin, linalg
 
-    np.set_printoptions(precision=3)
+    np.set_printoptions(precision=3, suppress=True)
     return linalg, np, sin
 
 
@@ -226,9 +226,9 @@ def __(dx_spl, multi_diag, x_spl):
 def __(l_by_c_spl, linalg, x_fin):
     _target = -x_fin
     _target[[0, -1]] = 0
-    y_spl = linalg.solve(l_by_c_spl, _target)
-    y_spl
-    return (y_spl,)
+    c_spl = linalg.solve(l_by_c_spl, _target)
+    c_spl
+    return (c_spl,)
 
 
 @app.cell(hide_code=True)
@@ -268,8 +268,8 @@ def __(np, plt):
 
 
 @app.cell
-def __(BSpline, dx_spl, x_spl, y_spl):
-    spl = BSpline(x_spl - 2 * dx_spl, y_spl, k=3)
+def __(BSpline, c_spl, dx_spl, x_spl):
+    spl = BSpline(x_spl - 2 * dx_spl, c_spl, k=3)
     return (spl,)
 
 
@@ -293,6 +293,30 @@ def __(np, plt, spl):
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""为什么还是差一点儿？`(@_@)`""")
+    return
+
+
+@app.cell
+def __(spl, x_spl):
+    spl(x_spl)
+    return
+
+
+@app.cell
+def __(c_spl, l_by_c_spl):
+    l_by_c_spl @ c_spl
+    return
+
+
+@app.cell
+def __(c_spl):
+    [2 / 3, 1 / 6] @ c_spl[:2]
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""难道SciPy不一样？""")
     return
 
 
