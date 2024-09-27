@@ -339,11 +339,92 @@ def __(c_spl, l_by_c_spl):
 def __(mo):
     mo.md(
         r"""
-        ## 3 最小二乘法
+        ## 3 最小二乘法（`ls`: least squares）
 
         采样幂函数 $1,x,\ldots, x^{10}$。
         """
     )
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(
+        r"""
+        $\left<\square, \triangle \right> \coloneqq \int_0^1 \square \triangle \mathrm{d} x.$
+
+        $$
+        \left<x^n, x^m \right> = \int_0^1 x^n x^m \mathrm{d} x = \frac{1}{m+n+1}.
+        $$
+
+        $$
+        \mathcal{L} x^n = \begin{cases}
+            n(n-1) x^{n-2} + x^n & n \geq 2 \\
+            0 & n \in \{0,1\} \\
+        \end{cases}.
+        $$
+
+        $$
+        \left<\mathcal{L} x^n, x^m \right> = \begin{cases}
+            \frac{n(n-1)}{m+n-1} + \frac{1}{m+n+1} & n \geq 2 \\
+            \frac{1}{m+n+1} & n \in \{0,1\} \\
+        \end{cases}.
+        $$
+        """
+    )
+    return
+
+
+@app.cell
+def __(np):
+    n_ls = 11
+    ns_ls = np.arange(n_ls)
+    ns_ls
+    return n_ls, ns_ls
+
+
+@app.cell
+def __(np, ns_ls):
+    _m = ns_ls[np.newaxis, :]
+    _n = ns_ls[:, np.newaxis]
+
+    # 1 / (m + n - 1) or zero
+    _temp = np.concat([0 * (_m + _n[:2]), 1 / (_m + _n[2:] - 1)], axis=0)
+    l_by_c_ls = _n * (_n - 1) * _temp + 1 / (_m + _n + 1)
+    l_by_c_ls
+    return (l_by_c_ls,)
+
+
+@app.cell
+def __(l_by_c_ls, linalg, ns_ls):
+    c_ls = linalg.solve(l_by_c_ls, -1 / (2 + ns_ls))
+    c_ls
+    return (c_ls,)
+
+
+@app.cell
+def __(c_ls, np, ns_ls, plt):
+    _x = np.linspace(0, 1, 123)
+
+    _fig, _axs = plt.subplots(nrows=2, sharex=True)
+
+    _axs[0].plot(_x, c_ls @ _x ** ns_ls[:, np.newaxis])
+    _axs[0].set_ylabel("$y$")
+
+    _axs[1].plot(
+        _x,
+        c_ls
+        @ (
+            (ns_ls * (ns_ls - 1))[:, np.newaxis] * _x ** (ns_ls - 2)[:, np.newaxis]
+        ),
+    )
+    _axs[1].set_ylabel("$y''$")
+
+    _axs[-1].set_xlabel("$x$")
+    for _ax in _axs:
+        _ax.grid()
+
+    _fig
     return
 
 
