@@ -13,10 +13,10 @@ def __():
 @app.cell
 def __():
     import numpy as np
-    from numpy import sin, linalg
+    from numpy import sin, linalg, cos
 
     np.set_printoptions(precision=3, suppress=True)
-    return linalg, np, sin
+    return cos, linalg, np, sin
 
 
 @app.cell
@@ -618,6 +618,146 @@ def __(ls, ls_dv_2, mo, np, plt, spl):
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""## 5 打靶法""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    from subprocess import run
+    from tempfile import TemporaryFile
+    from functools import cache
+
+
+    @cache
+    def _typst_compile(
+        typ: str,
+        *,
+        prelude="#set page(width: auto, height: auto, margin: 10pt)\n",
+        format="png",
+    ) -> bytes:
+        """Compile a Typst document"""
+        # 不清除 marimo 为什么不支持 SVG……
+        with TemporaryFile() as f:
+            run(
+                # Support for stdout is implemented, but not released yet
+                # https://github.com/typst/typst/pull/3632
+                ["typst", "compile", "-", f.name, "--format", format],
+                input=(prelude + typ).encode(),
+                capture_output=True,
+            )
+            return f.read()
+
+
+    def typst(typ: str):
+        return mo.image(_typst_compile(typ))
+    return TemporaryFile, cache, run, typst
+
+
+@app.cell(hide_code=True)
+def __(typst):
+    typst(r"""
+    #import "@preview/physica:0.9.3": eval, dv
+
+    设 $z:=y'$，则
+
+    $ dv(,x) mat(y;z) = mat(z; -y) - mat(0; -x). $
+    $eval(y)_0 = 0$, $eval(y)_1 = 0$.
+    """)
+    return
+
+
+@app.cell
+def __(cos, np, plt, ref, sin):
+    _x = np.linspace(0, 1, 123)
+
+    plt.plot(ref(_x), cos(_x) / sin(1) - 1)
+    plt.scatter([0], [1 / sin(1) - 1])
+
+    plt.grid()
+    plt.xlabel("$y$")
+    plt.ylabel(r"$z = y'$")
+    return
+
+
+@app.cell
+def __(mo):
+    the_x = mo.ui.slider(0, 1, 0.1)
+    the_x
+    return (the_x,)
+
+
+@app.cell
+def __(np, plt, the_x):
+    _y = np.linspace(-1, 1, 23)
+    _z = np.linspace(-1, 1, _y.size)
+
+    _ys, _zs = np.meshgrid(_y, _z)
+
+    fig, ax = plt.subplots()
+    ax.quiver(_y, _z, _zs, -_ys - the_x.value)
+    ax.set_xlabel("$y$")
+    ax.set_ylabel("$z = y'$")
+    fig
+    return ax, fig
+
+
+@app.cell
+def __(mo, sin):
+    the_y_0 = mo.ui.slider(-0.5, 0.5, 0.1, value=0)
+    the_z_0 = mo.ui.slider(-0.5, 0.5, 0.1, value=1 / sin(1) - 1)
+    mo.md(f"$y_0$: {the_y_0}\n\n$z_0$: {the_z_0}")
+    return the_y_0, the_z_0
+
+
+@app.cell
+def __(cos, np, plt, sin, the_y_0, the_z_0):
+    _x = np.linspace(0, 1, 123)
+
+    plt.plot(
+        sin(_x) * (1 + the_z_0.value) + cos(_x) * the_y_0.value - _x,
+        cos(_x) * (1 + the_z_0.value) - sin(_x) * the_y_0.value - 1,
+    )
+    plt.scatter([the_y_0.value], [the_z_0.value])
+
+    plt.xlim(-1, 1)
+    plt.ylim(-1, 1)
+
+    plt.grid()
+    plt.xlabel("$y$")
+    plt.ylabel(r"$z = y'$")
+    return
+
+
+@app.cell
+def __(mo):
+    the_x_max = mo.ui.slider(0.1, 1, 0.1, value=0.8)
+    the_x_max
+    return (the_x_max,)
+
+
+@app.cell
+def __(cos, np, plt, sin, the_x_max):
+    _x = np.arange(0, the_x_max.value, 0.04)[:, np.newaxis]
+
+    _y_0, _z_0 = np.meshgrid(
+        np.linspace(-0.5, 0.5, 14),
+        np.linspace(-0.5, 0.5, 14),
+    )
+    _y_0 = _y_0.reshape(1, -1)
+    _z_0 = _z_0.reshape(1, -1)
+
+    plt.plot(
+        sin(_x) * (1 + _z_0) + cos(_x) * _y_0 - _x,
+        cos(_x) * (1 + _z_0) - sin(_x) * _y_0 - 1,
+        alpha=0.6,
+    )
+
+    plt.xlim(-1, 1)
+    plt.ylim(-1, 1)
+
+    plt.grid()
+    plt.xlabel("$y$")
+    plt.ylabel(r"$z = y'$")
     return
 
 
