@@ -454,12 +454,14 @@ def __(c_ls, np, ns_ls):
 def __(ls, ls_dv_2, np, plt):
     _x = np.linspace(0, 1, 123)
 
-    _fig, _axs = plt.subplots(nrows=2, sharex=True)
+    _fig, _axs = plt.subplots(nrows=3, sharex=True)
 
     _axs[0].plot(_x, ls(_x))
     _axs[0].set_ylabel("$y$")
     _axs[1].plot(_x, ls_dv_2(_x))
     _axs[1].set_ylabel("$y''$")
+    _axs[2].plot(_x, ls_dv_2(_x) + ls(_x) + _x)
+    _axs[2].set_ylabel("$y'' + y + x$")
 
     _axs[-1].set_xlabel("$x$")
     for _ax in _axs:
@@ -472,6 +474,144 @@ def __(ls, ls_dv_2, np, plt):
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""## 4 误差曲线""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### $\hat y - y$""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(ls, np, plt, ref, spl, x_fin, y_fin):
+    _x = np.linspace(0, 1, 123)
+
+    plt.plot(_x, ref(_x), label="真解", linewidth=5, alpha=0.5)
+    plt.plot(x_fin, y_fin, label="差分法", marker="+")
+    plt.plot(_x, spl(_x), label="配置法")
+    plt.plot(_x, ls(_x), label="最小二乘法")
+
+    plt.xlabel("$x$")
+    plt.ylabel("$y$")
+    plt.grid()
+    plt.legend()
+    return
+
+
+@app.cell
+def __(ls, mo, np, plt, ref, spl, x_fin, y_fin):
+    _x = np.linspace(0, 1, 123)
+
+    plt.plot(x_fin, y_fin - ref(x_fin), label="差分法", marker="+")
+    plt.plot(_x, spl(_x) - ref(_x), label="配置法")
+    plt.plot(_x, ls(_x) - ref(_x), label="最小二乘法")
+
+    # 量级差太多了，缩放也救不过来……
+    # plt.yscale("asinh")
+
+    plt.xlabel("$x$")
+    plt.ylabel(r"$\hat y - y$")
+    plt.title("误差")
+    plt.grid()
+    plt.legend()
+
+    mo.md(f"""
+    | 方法 | 误差绝对值平均 |
+    |:-:|:--|
+    |差分法（fin）|{abs(y_fin - ref(x_fin)).mean():.3}|
+    |配置法（spl）|{abs(spl(_x) - ref(_x)).mean():.3}|
+    |最小二乘法（ls）|{abs(ls(_x) - ref(_x)).mean():.3}|
+
+    {mo.as_html(plt.gcf())}
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def __(ls, np, plt, ref, spl, x_fin, y_fin):
+    _x = np.linspace(0, 1, 123)
+    _c = plt.rcParams["axes.prop_cycle"]()
+
+    _fig, _axs = plt.subplots(nrows=3, sharex=True)
+
+    _axs[0].plot(x_fin, y_fin - ref(x_fin), marker="+", c=next(_c)["color"])
+    _axs[0].set_ylabel("差分法")
+
+    _axs[1].plot(_x, spl(_x) - ref(_x), c=next(_c)["color"])
+    _axs[1].set_ylabel("配置法")
+
+    _axs[2].plot(_x, ls(_x) - ref(_x), c=next(_c)["color"])
+    _axs[2].set_ylabel("最小二乘法")
+
+    _axs[-1].set_xlabel("$x$")
+
+    for _ax in _axs:
+        _ax.grid()
+
+    _fig.suptitle(r"误差 $\hat y - y$")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(
+        r"""
+        ### $\mathcal{L} \hat y - \mathcal{L} y$
+
+        差分法没有构造出连续函数，所以忽略。
+        """
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def __(ls, ls_dv_2, np, plt, spl):
+    _x = np.linspace(0, 1, 123)
+
+    plt.plot(_x, -_x, label="真解", linewidth=5, alpha=0.5)
+    plt.plot(_x, spl.derivative(2)(_x) + spl(_x), label="配置法")
+    plt.plot(_x, ls_dv_2(_x) + ls(_x), label="最小二乘法")
+
+    plt.xlabel("$x$")
+    plt.ylabel(r"$\mathcal{L} y$")
+    plt.grid()
+    plt.legend()
+    return
+
+
+@app.cell(hide_code=True)
+def __(ls, ls_dv_2, mo, np, plt, spl):
+    _x = np.linspace(0, 1, 123)
+    _c = plt.rcParams["axes.prop_cycle"]()
+
+    _fig, _axs = plt.subplots(nrows=2, sharex=True)
+
+    _error_spl = spl.derivative(2)(_x) + spl(_x) + _x
+    _axs[0].plot(_x, _error_spl, c=next(_c)["color"])
+    _axs[0].set_ylabel("配置法")
+
+    _error_ls = ls_dv_2(_x) + ls(_x) + _x
+    _axs[1].plot(_x, _error_ls, c=next(_c)["color"])
+    _axs[1].set_ylabel("最小二乘法")
+
+    _axs[-1].set_xlabel("$x$")
+
+    for _ax in _axs:
+        _ax.grid()
+
+    _fig.suptitle(r"误差 $\mathcal{L} \hat y - \mathcal{L} y$")
+
+
+    mo.md(f"""
+    |方法|误差绝对值平均|
+    |:-:|:--|
+    |差分法（fin）|N/A|
+    |配置法（spl）|{abs(_error_spl).mean():.3}|
+    |最小二乘法（ls）|{abs(_error_ls).mean():.3}|
+
+    {mo.as_html(_fig)}
+    """)
     return
 
 
