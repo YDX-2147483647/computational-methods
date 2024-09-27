@@ -233,7 +233,7 @@ def __(l_by_c_spl, linalg, x_fin):
 
 @app.cell(hide_code=True)
 def __(mo):
-    mo.md(r"""SciPy的B-样条左对齐，而我们中心对称，故需平移。""")
+    mo.md(r"""SciPy的B-样条左对齐，而我们中心对称，故需平移并在区间外两侧补结点。""")
     return
 
 
@@ -275,8 +275,22 @@ def __(np, plt):
 
 
 @app.cell
-def __(BSpline, c_spl, dx_spl, x_spl):
-    spl = BSpline(x_spl - 2 * dx_spl, c_spl, k=3)
+def __(BSpline, c_spl, dx_spl, np, x_max, x_min, x_spl):
+    spl = BSpline(
+        np.concat(
+            # 两侧各补两个结点，再外加一个空基（动机见下）
+            [
+                x_min + np.arange(-3, 0) * dx_spl,
+                x_spl,
+                x_max + np.arange(1, 4) * dx_spl,
+            ]
+        ),
+        # 两侧各补一个空基，让SciPy把整个区间都看作内插
+        np.concat([[0], c_spl, [0]]),
+        k=3,
+        # 让外插部分是 NaN，方便调试；其实不影响内插部分
+        extrapolate=False,
+    )
     return (spl,)
 
 
@@ -299,7 +313,13 @@ def __(np, plt, spl):
 
 @app.cell(hide_code=True)
 def __(mo):
-    mo.md(r"""为什么还是差一点儿？`(@_@)`""")
+    mo.md(
+        r"""
+        边界处导数崩了，这很正常，因为方程根本没规定边界的导数。
+
+        验证一下具体数字：
+        """
+    )
     return
 
 
@@ -312,34 +332,6 @@ def __(spl, x_spl):
 @app.cell
 def __(c_spl, l_by_c_spl):
     l_by_c_spl @ c_spl
-    return
-
-
-@app.cell
-def __(c_spl):
-    [2 / 3, 1 / 6] @ c_spl[:2]
-    return
-
-
-@app.cell(hide_code=True)
-def __(mo):
-    mo.md(r"""难道SciPy不一样？""")
-    return
-
-
-@app.cell
-def __(BSpline, np):
-    _knots = np.arange(12)
-    _c = np.zeros(8)
-    _c[3] = 1
-
-    _x = np.arange(10)
-    (
-        BSpline(_knots, _c, k=3)(_x),
-        BSpline(_knots, _c, k=3, extrapolate=False)(_x),
-        BSpline.basis_element(_knots[:5])(_x),
-        BSpline.basis_element(_knots[:5], extrapolate=False)(_x),
-    )
     return
 
 
