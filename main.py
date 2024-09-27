@@ -244,6 +244,13 @@ def __(np, plt):
     _spl = BSpline.basis_element(np.arange(5))
     assert _spl.k == 3
 
+    for _l, _f in [
+        ("y", _spl),
+        ("y'", _spl.derivative()),
+        ("y''", _spl.derivative(2)),
+    ]:
+        print(f"{_l:4} =", _f(np.arange(5)))
+
     _x = np.linspace(0, 4, 123)
     _fig, _axs = plt.subplots(nrows=3, sharex=True)
 
@@ -317,6 +324,22 @@ def __(c_spl):
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""难道SciPy不一样？""")
+    return
+
+
+@app.cell
+def __(BSpline, np):
+    _knots = np.arange(12)
+    _c = np.zeros(8)
+    _c[3] = 1
+
+    _x = np.arange(10)
+    (
+        BSpline(_knots, _c, k=3)(_x),
+        BSpline(_knots, _c, k=3, extrapolate=False)(_x),
+        BSpline.basis_element(_knots[:5])(_x),
+        BSpline.basis_element(_knots[:5], extrapolate=False)(_x),
+    )
     return
 
 
