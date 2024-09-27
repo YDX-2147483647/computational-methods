@@ -23,6 +23,7 @@ def __():
 def __():
     from matplotlib import pyplot as plt
 
+    plt.rcParams["font.family"] = "Source Han Serif CN"
     plt.rcParams["mathtext.fontset"] = "cm"
     return (plt,)
 
@@ -230,12 +231,46 @@ def __(l_by_c_spl, linalg, x_fin):
     return (y_spl,)
 
 
-@app.cell
-def __(x_spl, y_spl):
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""SciPy的B-样条左对齐，而我们中心对称，故需平移。""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(np, plt):
     from scipy.interpolate import BSpline
 
-    spl = BSpline(x_spl, y_spl, k=3)
-    return BSpline, spl
+    _spl = BSpline.basis_element(np.arange(5))
+    assert _spl.k == 3
+
+    _x = np.linspace(0, 4, 123)
+    _fig, _axs = plt.subplots(nrows=3, sharex=True)
+
+    _axs[0].plot(_x, _spl(_x))
+    _axs[0].set_yticks(np.arange(6) / 6)
+    _axs[0].set_ylabel("$y$")
+
+    _axs[1].plot(_x, _spl.derivative()(_x))
+    _axs[1].set_ylabel("$y'$")
+
+    _axs[2].plot(_x, _spl.derivative(2)(_x))
+    _axs[2].set_ylabel("$y''$")
+
+    _axs[0].set_title("SciPy的B-样条")
+    _axs[-1].set_xlabel("$x$")
+    for _ax in _axs:
+        _ax.set_xticks(np.arange(5))
+        _ax.grid()
+
+    _fig
+    return (BSpline,)
+
+
+@app.cell
+def __(BSpline, dx_spl, x_spl, y_spl):
+    spl = BSpline(x_spl - 2 * dx_spl, y_spl, k=3)
+    return (spl,)
 
 
 @app.cell
@@ -248,16 +283,16 @@ def __(np, plt, spl):
     _axs[1].set_ylabel("$y''$")
 
     _axs[-1].set_xlabel("$x$")
-    for ax in _axs:
-        ax.grid()
+    for _ax in _axs:
+        _ax.grid()
 
     _fig
-    return (ax,)
+    return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def __(mo):
-    mo.md(r"""呃，形状对，倍数不对……""")
+    mo.md(r"""为什么还是差一点儿？`(@_@)`""")
     return
 
 
