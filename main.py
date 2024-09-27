@@ -375,10 +375,25 @@ def __(mo):
     return
 
 
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(
+        r"""
+        可以看到，$1,x$ 这俩基很讨厌。我们提前处理边界条件，化成齐次边界条件，顺带扔掉它们。
+
+        - 由 $y(0) = 0$，$1$ 的组合系数为零，直接忽略。
+        - 由 $y(1) = 1$，所有基的系数之和为 $1$。
+
+        我们可把基换为 $x^2 - x, \ldots , x^{10} - x$，不过这和 Lagrange 乘数法没有本质区别，所以还是选成 $x, \ldots, x^{10}$ 吧，这也足够排除 $\frac10, 0^0$ 等问题了。
+        """
+    )
+    return
+
+
 @app.cell
 def __(np):
-    n_ls = 11
-    ns_ls = np.arange(n_ls)
+    n_ls = 10
+    ns_ls = np.arange(n_ls) + 1
     ns_ls
     return n_ls, ns_ls
 
@@ -388,36 +403,62 @@ def __(np, ns_ls):
     _m = ns_ls[np.newaxis, :]
     _n = ns_ls[:, np.newaxis]
 
-    # 1 / (m + n - 1) or zero
-    _temp = np.concat([0 * (_m + _n[:2]), 1 / (_m + _n[2:] - 1)], axis=0)
-    l_by_c_ls = _n * (_n - 1) * _temp + 1 / (_m + _n + 1)
+    l_by_c_ls = _n * (_n - 1) / (_m + _n - 1) + 1 / (_m + _n + 1)
     l_by_c_ls
     return (l_by_c_ls,)
 
 
 @app.cell
-def __(l_by_c_ls, linalg, ns_ls):
-    c_ls = linalg.solve(l_by_c_ls, -1 / (2 + ns_ls))
-    c_ls
+def __(l_by_c_ls, linalg, n_ls, np, ns_ls):
+    # 补上λ
+    _c_and_λ = linalg.solve(
+        np.block(
+            [
+                [l_by_c_ls, -np.ones((n_ls, 1))],
+                [np.ones(n_ls), 0],
+            ]
+        ),
+        np.append(-1 / (2 + ns_ls), 0),
+    )
+    c_ls = _c_and_λ[:-1]
+    c_ls, _c_and_λ[-1]
     return (c_ls,)
 
 
 @app.cell
-def __(c_ls, np, ns_ls, plt):
+def __(c_ls, np, ns_ls):
+    def ls(x: np.array) -> np.array:
+        """Calculate y by least squares"""
+        assert x.ndim == 1
+        return c_ls @ x ** ns_ls[:, np.newaxis]
+    return (ls,)
+
+
+@app.cell
+def __(c_ls, np, ns_ls):
+    _n = ns_ls[:, np.newaxis]
+
+
+    def ls_dv_2(x: np.array) -> np.array:
+        """Calculate y'' by least squares"""
+        assert x.ndim == 1
+
+        # 0 * (0 ** -1) = 0 * inf → 0
+        with np.errstate(divide="ignore", invalid="ignore"):
+            _dv_y_2 = c_ls @ (_n * (_n - 1) * x ** (_n - 2))
+        return np.nan_to_num(_dv_y_2, 0)
+    return (ls_dv_2,)
+
+
+@app.cell
+def __(ls, ls_dv_2, np, plt):
     _x = np.linspace(0, 1, 123)
 
     _fig, _axs = plt.subplots(nrows=2, sharex=True)
 
-    _axs[0].plot(_x, c_ls @ _x ** ns_ls[:, np.newaxis])
+    _axs[0].plot(_x, ls(_x))
     _axs[0].set_ylabel("$y$")
-
-    _axs[1].plot(
-        _x,
-        c_ls
-        @ (
-            (ns_ls * (ns_ls - 1))[:, np.newaxis] * _x ** (ns_ls - 2)[:, np.newaxis]
-        ),
-    )
+    _axs[1].plot(_x, ls_dv_2(_x))
     _axs[1].set_ylabel("$y''$")
 
     _axs[-1].set_xlabel("$x$")
