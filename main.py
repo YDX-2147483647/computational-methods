@@ -621,7 +621,7 @@ def __(mo):
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def __(mo):
     from subprocess import run
     from tempfile import TemporaryFile
@@ -633,10 +633,9 @@ def __(mo):
         typ: str,
         *,
         prelude="#set page(width: auto, height: auto, margin: 10pt)\n",
-        format="png",
+        format="svg",
     ) -> bytes:
         """Compile a Typst document"""
-        # 不清除 marimo 为什么不支持 SVG……
         with TemporaryFile() as f:
             run(
                 # Support for stdout is implemented, but not released yet
@@ -649,7 +648,7 @@ def __(mo):
 
 
     def typst(typ: str):
-        return mo.image(_typst_compile(typ))
+        return mo.Html(_typst_compile(typ).decode())
     return TemporaryFile, cache, run, typst
 
 
