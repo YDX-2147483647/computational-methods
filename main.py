@@ -13,7 +13,7 @@ def __():
 @app.cell
 def __():
     import numpy as np
-    from numpy import sin, linalg, cos
+    from numpy import cos, linalg, sin
 
     np.set_printoptions(precision=3, suppress=True)
     return cos, linalg, np, sin
@@ -84,7 +84,7 @@ def __(multi_diag):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def __(np):
     from collections.abc import Collection
 
@@ -108,7 +108,7 @@ def __(mo, typst):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def __(mo):
     from functools import cache
     from subprocess import CalledProcessError, run
@@ -228,7 +228,7 @@ def __(l_by_y_fin, linalg, x_fin):
     return (y_fin,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def __(plt, x_fin, y_fin):
     plt.plot(x_fin, y_fin, marker="+")
     plt.xlabel("$x$")
@@ -350,7 +350,7 @@ def __(BSpline, c_spl, dx_spl, np, x_max, x_min, x_spl):
     return (spl,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def __(np, plt, spl):
     _x = np.linspace(0, 1, 123)
     _fig, _axs = plt.subplots(nrows=2, sharex=True)
@@ -506,7 +506,7 @@ def __(c_ls, np, ns_ls):
     return (ls_dv_2,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def __(ls, ls_dv_2, np, plt):
     _x = np.linspace(0, 1, 123)
 
@@ -555,7 +555,7 @@ def __(ls, np, plt, ref, spl, x_fin, y_fin):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def __(ls, mo, np, plt, ref, spl, x_fin, y_fin):
     _x = np.linspace(0, 1, 123)
 
@@ -581,6 +581,19 @@ def __(ls, mo, np, plt, ref, spl, x_fin, y_fin):
 
     {mo.as_html(plt.gcf())}
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.accordion(
+        {
+            "误差“平均”方法": r"""
+            - 差分法没有给出连续函数，平均误差只用列方程的那些采样点计算；
+            - 其它方法给出了连续函数，平均误差是按重新采样的更密的点计算。
+            """
+        }
+    )
     return
 
 
@@ -696,7 +709,7 @@ def __(mo):
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def __(cos, np, plt, ref, sin):
     _x = np.linspace(0, 1, 123)
 
@@ -706,6 +719,7 @@ def __(cos, np, plt, ref, sin):
     plt.grid()
     plt.xlabel("$y$")
     plt.ylabel(r"$z = y'$")
+    plt.title("真解")
     return
 
 
@@ -716,7 +730,7 @@ def __(mo):
     return (the_x,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def __(np, plt, the_x):
     _y = np.linspace(-1, 1, 23)
     _z = np.linspace(-1, 1, _y.size)
@@ -727,6 +741,7 @@ def __(np, plt, the_x):
     ax.quiver(_y, _z, _zs, -_ys - the_x.value)
     ax.set_xlabel("$y$")
     ax.set_ylabel("$z = y'$")
+    ax.set_title(rf"$x = {the_x.value}$ 时的场")
     fig
     return ax, fig
 
@@ -739,7 +754,7 @@ def __(mo, sin):
     return the_y_0, the_z_0
 
 
-@app.cell
+@app.cell(hide_code=True)
 def __(cos, np, plt, sin, the_y_0, the_z_0):
     _x = np.linspace(0, 1, 123)
 
@@ -765,7 +780,7 @@ def __(mo):
     return (the_x_max,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def __(cos, np, plt, sin, the_x_max):
     _x = np.arange(0, the_x_max.value, 0.04)[:, np.newaxis]
 
@@ -799,8 +814,9 @@ def __(mo):
 
 @app.cell
 def __(np, sin, x_max, x_min):
-    from scipy.integrate import ode
     from collections import deque
+
+    from scipy.integrate import ode
 
 
     def _f(x: float, y_z: np.array) -> list[float]:
