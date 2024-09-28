@@ -623,9 +623,10 @@ def __(mo):
 
 @app.cell
 def __(mo):
-    from subprocess import run
-    from tempfile import TemporaryFile
     from functools import cache
+    from subprocess import CalledProcessError, run
+    from sys import stderr
+    from tempfile import TemporaryFile
 
 
     @cache
@@ -635,21 +636,29 @@ def __(mo):
         prelude="#set page(width: auto, height: auto, margin: 10pt)\n",
         format="svg",
     ) -> bytes:
-        """Compile a Typst document"""
+        """Compile a Typst document
+
+        https://github.com/marimo-team/marimo/discussions/2441
+        """
         with TemporaryFile() as f:
-            run(
-                # Support for stdout is implemented, but not released yet
-                # https://github.com/typst/typst/pull/3632
-                ["typst", "compile", "-", f.name, "--format", format],
-                input=(prelude + typ).encode(),
-                capture_output=True,
-            )
-            return f.read()
+            try:
+                run(
+                    # Support for stdout is implemented, but not released yet
+                    # https://github.com/typst/typst/pull/3632
+                    ["typst", "compile", "-", f.name, "--format", format],
+                    input=(prelude + typ).encode(),
+                    check=True,
+                    capture_output=True,
+                )
+                return f.read()
+            except CalledProcessError as err:
+                stderr.write(err.stderr.decode())
+                raise err
 
 
     def typst(typ: str):
         return mo.Html(_typst_compile(typ).decode())
-    return TemporaryFile, cache, run, typst
+    return CalledProcessError, TemporaryFile, cache, run, stderr, typst
 
 
 @app.cell(hide_code=True)
