@@ -819,12 +819,12 @@ def __(np, sin, x_max, x_min):
     from scipy.integrate import ode
 
 
-    def _f(x: float, y_z: np.array) -> list[float]:
+    def f_shoot(x: float, y_z: np.array) -> list[float]:
         """(y,z) → (y',z')"""
         return [y_z[1], -y_z[0] - x]
 
 
-    _r = ode(_f).set_integrator("vode")
+    _r = ode(f_shoot).set_integrator("vode")
 
 
     @np.vectorize
@@ -839,7 +839,7 @@ def __(np, sin, x_max, x_min):
 
 
     shoot(1 / sin(1) - 1)
-    return deque, ode, shoot
+    return deque, f_shoot, ode, shoot
 
 
 @app.cell
@@ -876,7 +876,47 @@ def __(shoot):
 
 @app.cell
 def __(mo, sin, z_0_shoot):
-    mo.md(f"相对误差：{z_0_shoot / (1 / sin(1) - 1) - 1}")
+    mo.md(f"$z_0$ 相对误差：{z_0_shoot / (1 / sin(1) - 1) - 1:.3}")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""用与其它方法计算误差时相同的步长计算 $y$，算一下 $y$ 的误差。""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(deque, f_shoot, mo, np, ode, plt, ref, x_min, z_0_shoot):
+    _r = ode(f_shoot).set_integrator("vode")
+    _r.set_initial_value([0.0, z_0_shoot], x_min)
+
+    _x = np.linspace(0, 1, 123)
+    _y = deque()
+    for _xx in _x:
+        if _xx == 0.0:
+            _y.append(0.0)
+        else:
+            assert _r.successful()
+            _y.append(_r.integrate(_xx)[0])
+    _y = np.array(list(_y))
+
+    plt.plot(_x, _y - ref(_x))
+    plt.xlabel("$x$")
+    plt.ylabel(r"$\hat y - y$")
+    plt.title("误差")
+    plt.grid()
+
+    mo.md(rf"""
+    误差绝对值平均：{abs(_y - ref(_x)).mean():.3}
+    {mo.as_html(plt.gcf())}
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""在最小二乘法和差分法之间，不过对打靶法对微分方程满足得更好。""")
     return
 
 
