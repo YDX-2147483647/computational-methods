@@ -72,6 +72,18 @@ def __(sin):
     return (ref,)
 
 
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""## 若干工具函数""")
+    return
+
+
+@app.cell
+def __(multi_diag):
+    multi_diag([1, 2, 3], size=5)
+    return
+
+
 @app.cell
 def __(np):
     from collections.abc import Collection
@@ -87,10 +99,54 @@ def __(np):
             np.diagflat(c * np.ones(size - abs(k)), k=k)
             for k, c in enumerate(coefficients, start=-half_diag)
         )
-
-
-    multi_diag([1, 2, 3], size=5)
     return Collection, multi_diag
+
+
+@app.cell
+def __(mo, typst):
+    mo.md(r"$\frac12 y = \mathcal{L} y$"), typst(r"$1/2 y = cal(L) y$")
+    return
+
+
+@app.cell
+def __(mo):
+    from functools import cache
+    from subprocess import CalledProcessError, run
+    from sys import stderr
+    from tempfile import TemporaryFile
+
+
+    @cache
+    def _typst_compile(
+        typ: str,
+        *,
+        prelude="#set page(width: auto, height: auto, margin: 10pt)\n",
+        format="svg",
+    ) -> bytes:
+        """Compile a Typst document
+
+        https://github.com/marimo-team/marimo/discussions/2441
+        """
+        with TemporaryFile() as f:
+            try:
+                run(
+                    # Support for stdout is implemented, but not released yet
+                    # https://github.com/typst/typst/pull/3632
+                    ["typst", "compile", "-", f.name, "--format", format],
+                    input=(prelude + typ).encode(),
+                    check=True,
+                    capture_output=True,
+                )
+                return f.read()
+            except CalledProcessError as err:
+                stderr.write(err.stderr.decode())
+                raise err
+
+
+    def typst(typ: str) -> mo.Html:
+        """Write typst"""
+        return mo.Html(_typst_compile(typ).decode())
+    return CalledProcessError, TemporaryFile, cache, run, stderr, typst
 
 
 @app.cell(hide_code=True)
@@ -621,46 +677,6 @@ def __(mo):
     return
 
 
-@app.cell
-def __(mo):
-    from functools import cache
-    from subprocess import CalledProcessError, run
-    from sys import stderr
-    from tempfile import TemporaryFile
-
-
-    @cache
-    def _typst_compile(
-        typ: str,
-        *,
-        prelude="#set page(width: auto, height: auto, margin: 10pt)\n",
-        format="svg",
-    ) -> bytes:
-        """Compile a Typst document
-
-        https://github.com/marimo-team/marimo/discussions/2441
-        """
-        with TemporaryFile() as f:
-            try:
-                run(
-                    # Support for stdout is implemented, but not released yet
-                    # https://github.com/typst/typst/pull/3632
-                    ["typst", "compile", "-", f.name, "--format", format],
-                    input=(prelude + typ).encode(),
-                    check=True,
-                    capture_output=True,
-                )
-                return f.read()
-            except CalledProcessError as err:
-                stderr.write(err.stderr.decode())
-                raise err
-
-
-    def typst(typ: str):
-        return mo.Html(_typst_compile(typ).decode())
-    return CalledProcessError, TemporaryFile, cache, run, stderr, typst
-
-
 @app.cell(hide_code=True)
 def __(typst):
     typst(r"""
@@ -668,9 +684,15 @@ def __(typst):
 
     设 $z:=y'$，则
 
-    $ dv(,x) mat(y;z) = mat(z; -y) - mat(0; -x). $
+    $ dv(,x) mat(y;z) = mat(z; -y) + mat(0; -x). $
     $eval(y)_0 = 0$, $eval(y)_1 = 0$.
     """)
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### 试一试""")
     return
 
 
@@ -766,6 +788,79 @@ def __(cos, np, plt, sin, the_x_max):
     plt.grid()
     plt.xlabel("$y$")
     plt.ylabel(r"$z = y'$")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### 正式试""")
+    return
+
+
+@app.cell
+def __(np, sin, x_max, x_min):
+    from scipy.integrate import ode
+    from collections import deque
+
+
+    def _f(x: float, y_z: np.array) -> list[float]:
+        """(y,z) → (y',z')"""
+        return [y_z[1], -y_z[0] - x]
+
+
+    _r = ode(_f).set_integrator("vode")
+
+
+    @np.vectorize
+    def shoot(z_0: float, *, y_0=0.0, dx=0.02) -> float:
+        """z₀ ↦ y₁"""
+        _r.set_initial_value([y_0, z_0], x_min)
+
+        while _r.successful():
+            y_z = _r.integrate(_r.t + dx)
+            if _r.t >= x_max:
+                return y_z[0]
+
+
+    shoot(1 / sin(1) - 1)
+    return deque, ode, shoot
+
+
+@app.cell
+def __(np, plt, shoot):
+    _z_0 = np.linspace(-0.5, 0.5, 14)
+    _y_1 = shoot(_z_0)
+
+    plt.plot(_z_0, _y_1, marker="+")
+    plt.xlabel(r"$z_0$")
+    plt.ylabel(r"$y_1$")
+    plt.hlines(0, *plt.xlim(), "red")
+    plt.grid()
+    plt.gcf()
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""回头一看，还真是一次函数呢……""")
+    return
+
+
+@app.cell
+def __(shoot):
+    from scipy.optimize import fsolve
+
+    z_0_shoot = fsolve(shoot, 0)
+    assert z_0_shoot.size == 1
+    z_0_shoot = z_0_shoot[0]
+
+    z_0_shoot, shoot(z_0_shoot)
+    return fsolve, z_0_shoot
+
+
+@app.cell
+def __(mo, sin, z_0_shoot):
+    mo.md(f"相对误差：{z_0_shoot / (1 / sin(1) - 1) - 1}")
     return
 
 
