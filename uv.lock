@@ -48,7 +48,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "marimo", specifier = ">=0.8.20" },
+    { name = "marimo", specifier = ">=0.9" },
     { name = "matplotlib", specifier = ">=3.9.2" },
     { name = "numpy", specifier = ">=2.1.1" },
     { name = "scipy", specifier = ">=1.14.1" },
@@ -215,7 +215,7 @@ wheels = [
 
 [[package]]
 name = "marimo"
-version = "0.8.20"
+version = "0.9.10"
 source = { registry = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple" }
 dependencies = [
     { name = "click" },
@@ -223,6 +223,7 @@ dependencies = [
     { name = "itsdangerous" },
     { name = "jedi" },
     { name = "markdown" },
+    { name = "narwhals" },
     { name = "packaging" },
     { name = "psutil" },
     { name = "pygments" },
@@ -234,9 +235,9 @@ dependencies = [
     { name = "uvicorn" },
     { name = "websockets" },
 ]
-sdist = { url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/a8/28/0ed62ddf6759f298dac57086adcff7f06589b30996d68450604b16a5db98/marimo-0.8.20.tar.gz", hash = "sha256:b0b18634d86bb73c662577bb13cde0294f9ed7ac80bad57a4ea5d9f66ae245d9", size = 11460746 }
+sdist = { url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/ff/62/13ea40d14d5bfe5c8831ce5372fb34d58e7f2f51422d09e8298414d07052/marimo-0.9.10.tar.gz", hash = "sha256:9d4be0dadfe50f88622d94bcec4c9b46ae3646adf45a862ceccbb44a868b6031", size = 11646298 }
 wheels = [
-    { url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/07/31/67bd10554ceebdff3ca23fc8426bf2d5b3948dc8f77fe86dfe112e5d90c3/marimo-0.8.20-py3-none-any.whl", hash = "sha256:05f756be62ce06259fa2d45afe3e79a5d581ee979af4579e9ebcc74e9545956f", size = 11758154 },
+    { url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/6f/32/6ae22e3b4c6f404c27ca76107c4c6a42c6345234965a7940c8dc5dcae42e/marimo-0.9.10-py3-none-any.whl", hash = "sha256:36e4d32471baced0e17eca8b98a96fe18cc6b9058597601d11fcfc12deed3a87", size = 11944799 },
 ]
 
 [[package]]
@@ -282,6 +283,15 @@ wheels = [
     { url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/47/79/8486d4ddcaaf676314b5fb58e8fe19d1a6210a443a7c31fa72d4215fcb87/matplotlib-3.9.2-cp313-cp313t-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f053c40f94bc51bc03832a41b4f153d83f2062d88c72b5e79997072594e97e51", size = 8221027 },
     { url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/56/62/72a472181578c3d035dcda0d0fa2e259ba2c4cb91132588a348bb705b70d/matplotlib-3.9.2-cp313-cp313t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dbe196377a8248972f5cede786d4c5508ed5f5ca4a1e09b44bda889958b33f8c", size = 8329097 },
     { url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/01/8a/760f7fce66b39f447ad160800619d0bd5d0936d2b4633587116534a4afe0/matplotlib-3.9.2-cp313-cp313t-musllinux_1_2_x86_64.whl", hash = "sha256:5816b1e1fe8c192cbc013f8f3e3368ac56fbecf02fb41b8f8559303f24c5015e", size = 9093770 },
+]
+
+[[package]]
+name = "narwhals"
+version = "1.9.4"
+source = { registry = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple" }
+sdist = { url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/86/9d/58e978bc1a4fda8333d94c3f3071c620109eb225b6665aba9c25997062ef/narwhals-1.9.4.tar.gz", hash = "sha256:5de1f2d7bfbe555573d945fe1d760469a05784f3e69b7bc1b5b1303aae7946a1", size = 157117 }
+wheels = [
+    { url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/c4/61/2440cb9ac78164c10d1c1b17a4bbc2ff44e77e42266a3d6876ad2676b807/narwhals-1.9.4-py3-none-any.whl", hash = "sha256:cdd16f73268a3f0d3327aa9e4c6ab25a0b277629d6710bef58e86f40e57e5cc9", size = 188947 },
 ]
 
 [[package]]

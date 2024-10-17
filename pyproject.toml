@@ -5,7 +5,7 @@ description = "作业：科学与工程计算"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "marimo>=0.8.20",
+    "marimo>=0.9",
     "matplotlib>=3.9.2",
     "numpy>=2.1.1",
     "scipy>=1.14.1",
