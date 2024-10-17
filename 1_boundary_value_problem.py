@@ -4,6 +4,12 @@ __generated_with = "0.8.20"
 app = marimo.App(width="medium")
 
 
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""# §1 两点边值问题""")
+    return
+
+
 @app.cell
 def __():
     import marimo as mo

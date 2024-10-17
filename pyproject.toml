@@ -1,7 +1,7 @@
 [project]
-name = "boundary-value-problems"
+name = "computational-methods"
 version = "0.1.0"
-description = "Add your description here"
+description = "作业：科学与工程计算"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
