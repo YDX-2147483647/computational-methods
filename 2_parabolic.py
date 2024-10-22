@@ -39,12 +39,11 @@ def __(mo):
 
 @app.cell(hide_code=True)
 def __(mo):
-    from functools import cache
     from subprocess import CalledProcessError, run
     from sys import stderr
 
 
-    @cache
+    @mo.cache
     def _typst_compile(
         typ: str,
         *,
@@ -71,7 +70,7 @@ def __(mo):
     def typst(typ: str) -> mo.Html:
         """Write typst"""
         return mo.Html(_typst_compile(typ).decode())
-    return CalledProcessError, cache, run, stderr, typst
+    return CalledProcessError, run, stderr, typst
 
 
 @app.cell
@@ -235,7 +234,7 @@ def __(plot_surface, ref, t, x):
     return
 
 
-@app.cell(hide_code=True)
+@app.cell
 def __(mo, np):
     @mo.cache
     def ref(t: np.array, x: np.array) -> np.array:
@@ -253,6 +252,29 @@ def __(mo, np):
     return (ref,)
 
 
+@app.cell
+def __(np):
+    def setup_conditions(t: np.array, x: np.array) -> np.array:
+        """根据初始条件、边界条件准备预备解
+
+        Params:
+            t[#t]
+            x[#x]
+        Returns:
+            u[#x, #t]
+        """
+        assert t.ndim == 1
+        assert x.ndim == 1
+
+        u = np.zeros((x.size, t.size))
+        u[:, 0] = np.exp(-x)
+        u[0, :] = np.exp(t)
+        u[-1, :] = np.exp(t - 1)
+
+        return u
+    return (setup_conditions,)
+
+
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(
@@ -267,7 +289,7 @@ def __(mo):
 
 @app.cell(hide_code=True)
 def __(mo):
-    mo.md(r"""一次求一行。""")
+    mo.md(r"""其实都是一次求一行（一个 $t$）。""")
     return
 
 
@@ -282,17 +304,15 @@ def __(dt, dx, multi_diag, np, x):
 
 
 @app.cell
-def __(np, t, to_next_u_ex, x):
+def __(setup_conditions, t, to_next_u_ex, x):
     # u[#x, #t]
-    u_ex = np.zeros((x.size, t.size))
-    u_ex[0, :] = np.exp(t)
-    u_ex[-1, :] = np.exp(t - 1)
+    u_ex = setup_conditions(t, x)
 
     for _n, _t in enumerate(t):
         if _n == 0:
-            u_ex[:, 0] = np.exp(-x)
-        else:
-            u_ex[1:-1, _n] = to_next_u_ex @ u_ex[:, _n - 1]
+            continue
+
+        u_ex[1:-1, _n] = to_next_u_ex @ u_ex[:, _n - 1]
     return (u_ex,)
 
 
@@ -316,7 +336,76 @@ def __(np, ref, t, u_ex, x):
 
 @app.cell(hide_code=True)
 def __(mo):
-    mo.md(r"""## 1 最简隐格式""")
+    mo.md(r"""## 1 最简隐格式（`im`）""")
+    return
+
+
+@app.cell
+def __(dt, dx, multi_diag, np, x):
+    # to_previous_u[#previous_x, #current_x] (without boundary)
+    to_previous_u_im = (
+        np.eye(x.size - 2) - dt * multi_diag([1, -2, 1], size=x.size - 2) / dx**2
+    )
+    to_previous_u_im
+    return (to_previous_u_im,)
+
+
+@app.cell
+def __(
+    dt,
+    dx,
+    linalg,
+    multi_diag,
+    np,
+    setup_conditions,
+    t,
+    to_previous_u_im,
+    x,
+):
+    # u[#x, #t]
+    u_im = setup_conditions(t, x)
+
+    _inv = linalg.inv(to_previous_u_im)
+
+    _rhs = np.zeros(x.size - 2)
+
+    for _n, _t in enumerate(t):
+        if _n == 0:
+            continue
+
+        # RHS is derived from the “check” equation below
+        _rhs[:] = u_im[1:-1, _n - 1]
+        _rhs[0] += dt * u_im[0, _n] / dx**2
+        _rhs[-1] += dt * u_im[-1, _n] / dx**2
+
+        u_im[1:-1, _n] = _inv @ _rhs
+
+    # Check
+
+    # to_previous_u[#previous_x, #current_x] (only with current boundary)
+    _to_previous_u = (
+        np.eye(x.size) - dt * multi_diag([1, -2, 1], size=x.size) / dx**2
+    )[1:-1, :]
+    # to_previous_u (only with current boundary) @ current_x (with boundary) = previous_x (without boundary)
+    assert np.abs(_to_previous_u @ u_im[:, _n] - u_im[1:-1, _n - 1]).max() < 1e-6
+    return (u_im,)
+
+
+@app.cell
+def __(plot_surface, t, u_im, x):
+    plot_surface(t, x, u_im, title="近似解")
+    return
+
+
+@app.cell
+def __(plot_surface, ref, t, u_im, x):
+    plot_surface(t, x, u_im - ref(t, x), title="误差")
+    return
+
+
+@app.cell
+def __(np, ref, t, u_im, x):
+    np.abs(u_im - ref(t, x)).max()
     return
 
 
