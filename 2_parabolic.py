@@ -114,7 +114,7 @@ def __(lb_dx, mo):
 
 @app.cell(hide_code=True)
 def __(mo):
-    r = mo.ui.slider(0.1, 0.6, 0.1, label=r"$r$", show_value=True, debounce=True)
+    r = mo.ui.slider(0.1, 10.0, 0.2, label=r"$r$", show_value=True, debounce=True)
     r
     return (r,)
 
@@ -438,6 +438,87 @@ def __(plot_benchmark, stat_cn):
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""## 3 振荡现象""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### 原问题""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(dx, lb_dx, mo):
+    mo.md(rf"""
+    {lb_dx}
+    $\mathrm{{d}}x = {dx}$.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def __(dt, mo, r):
+    mo.md(rf"""
+    {r}
+    $\mathrm{{d}}t = {dt}$.
+    """)
+    return
+
+
+@app.cell
+def __(plot_surface, solver_cn, t, x):
+    plot_surface(t, x, solver_cn.u, title="近似解")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""调到最粗 $\mathrm{d}x = 0.25, \mathrm{d}t = 0.625$ 也没振荡呢……""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### 更改条件""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(typst):
+    typst(r"""
+    #import "@preview/physica:0.9.3": eval
+
+    $
+    eval(u)_(t=0) &= I_((1/3, 2/3)). \
+    eval(u)_(x=0) &= 0, & t &in RR^+. \
+    eval(u)_(x=1) &= 0, & t &in RR^+. \
+    $
+    """)
+    return
+
+
+@app.cell
+def __(SolverCrankNicolson, np, t_max, t_min, x_max, x_min):
+    solver_gate = SolverCrankNicolson(
+        t=np.arange(t_min, t_max, 0.002),
+        x=np.linspace(x_min, x_max, 20),
+    )
+
+    # 另设初始条件
+    solver_gate.u[:, 0] = (1 / 3 < solver_gate.x) & (solver_gate.x < 2 / 3)
+    solver_gate.u[0, :] = 0
+    solver_gate.u[-1, :] = 0
+
+    solver_gate.solve()
+
+    # Validate the last `t`
+    solver_gate.validate(solver_gate.t.size - 1)
+    return (solver_gate,)
+
+
+@app.cell
+def __(plot_surface, solver_gate):
+    plot_surface(solver_gate.t, solver_gate.x, solver_gate.u, title="近似解")
     return
 
 
