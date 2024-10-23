@@ -7,11 +7,16 @@ from typing import TYPE_CHECKING
 
 import marimo as mo
 import numpy as np
+from matplotlib.pyplot import subplots
 from pandas import DataFrame
+from seaborn import lineplot
 
 if TYPE_CHECKING:
     from collections.abc import Collection
     from typing import Final
+
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
 
 
 @mo.cache
@@ -164,3 +169,28 @@ def benchmark(
         [[dx, error, duration] for (dx, timing, error) in stat for duration in timing],
         columns=["dx", "最大误差", "时长"],
     )
+
+
+def plot_benchmark(data: DataFrame) -> tuple[Figure, Axes]:
+    """Plot the benchmark result
+
+    Params:
+        `df`: Output of `benchmark()`
+    """
+
+    fig, axs = subplots(nrows=3, layout="constrained")
+
+    lineplot(ax=axs[0], data=data, x="dx", y="最大误差", markers=True)
+    axs[0].set_xlabel(r"$\mathrm{d}x$")
+    lineplot(ax=axs[1], data=data, x="dx", y="时长", markers=True)
+    axs[1].set_xlabel(r"$\mathrm{d}x$")
+    axs[2].set_ylabel("时长 / s")
+    # 时长需要计算误差线，必须放到纵轴
+    lineplot(ax=axs[2], data=data, y="时长", x="最大误差", markers=True)
+    axs[2].set_ylabel("时长 / s")
+
+    for ax in axs:
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.grid(True)
+    return fig, axs

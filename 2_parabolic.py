@@ -25,19 +25,6 @@ def __():
     return linalg, np
 
 
-@app.cell
-def __():
-    from matplotlib import pyplot as plt, cm
-    import seaborn as sns
-    return cm, plt, sns
-
-
-@app.cell
-def __():
-    from collections import deque
-    return (deque,)
-
-
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""## 工具函数""")
@@ -161,8 +148,14 @@ def __(plot_surface, ref, t, x):
 
 @app.cell
 def __():
-    from parabolic_pde import ref, setup_conditions, Solver, benchmark
-    return Solver, benchmark, ref, setup_conditions
+    from parabolic_pde import (
+        ref,
+        setup_conditions,
+        Solver,
+        benchmark,
+        plot_benchmark,
+    )
+    return Solver, benchmark, plot_benchmark, ref, setup_conditions
 
 
 @app.cell
@@ -331,22 +324,8 @@ def __(SolverImplicit, benchmark, benchmark_kwargs, mo):
 
 
 @app.cell(hide_code=True)
-def __(plt, sns, stat_im):
-    _fig, _axs = plt.subplots(nrows=3, layout="constrained")
-
-    sns.lineplot(ax=_axs[0], data=stat_im, x="dx", y="最大误差", markers=True)
-    _axs[0].set_xlabel(r"$\mathrm{d}x$")
-    sns.lineplot(ax=_axs[1], data=stat_im, x="dx", y="时长", markers=True)
-    _axs[1].set_xlabel(r"$\mathrm{d}x$")
-    _axs[2].set_ylabel("时长 / s")
-    # 时长需要计算误差线，必须放到纵轴
-    sns.lineplot(ax=_axs[2], data=stat_im, y="时长", x="最大误差", markers=True)
-    _axs[2].set_ylabel("时长 / s")
-
-    for _ax in _axs:
-        _ax.set_xscale("log")
-        _ax.set_yscale("log")
-        _ax.grid(True)
+def __(plot_benchmark, stat_im):
+    _fig, _axs = plot_benchmark(stat_im)
     _fig
     return
 
@@ -354,6 +333,12 @@ def __(plt, sns, stat_im):
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""## 2 CN格式（`cn`）""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### 单次""")
     return
 
 
@@ -426,6 +411,27 @@ def __(plot_surface, solver_cn, t, x):
 @app.cell
 def __(solver_cn):
     solver_cn.max_error()
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### 统计性能""")
+    return
+
+
+@app.cell
+def __(SolverCrankNicolson, benchmark, benchmark_kwargs, mo):
+    with mo.persistent_cache("stat_cn"):
+        stat_cn = benchmark(SolverCrankNicolson, **benchmark_kwargs)
+    stat_cn
+    return (stat_cn,)
+
+
+@app.cell(hide_code=True)
+def __(plot_benchmark, stat_cn):
+    _fig, _axs = plot_benchmark(stat_cn)
+    _fig
     return
 
 
