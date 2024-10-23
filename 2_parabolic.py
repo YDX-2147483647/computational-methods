@@ -153,44 +153,9 @@ def __(plot_surface, ref, t, x):
 
 
 @app.cell
-def __(mo, np):
-    @mo.cache
-    def ref(t: np.ndarray, x: np.ndarray) -> np.ndarray:
-        """真解
-
-        Params:
-            t[#t]
-            x[#x]
-        Returns:
-            u[#x, #t]
-        """
-        assert t.ndim == 1
-        assert x.ndim == 1
-        return np.exp(-x[:, np.newaxis] + t[np.newaxis, :])
-    return (ref,)
-
-
-@app.cell
-def __(np):
-    def setup_conditions(t: np.ndarray, x: np.ndarray) -> np.ndarray:
-        """根据初始条件、边界条件准备预备解
-
-        Params:
-            t[#t]
-            x[#x]
-        Returns:
-            u[#x, #t]
-        """
-        assert t.ndim == 1
-        assert x.ndim == 1
-
-        u = np.zeros((x.size, t.size))
-        u[:, 0] = np.exp(-x)
-        u[0, :] = np.exp(t)
-        u[-1, :] = np.exp(t - 1)
-
-        return u
-    return (setup_conditions,)
+def __():
+    from parabolic_pde import ref, setup_conditions, Solver
+    return Solver, ref, setup_conditions
 
 
 @app.cell(hide_code=True)
@@ -212,43 +177,48 @@ def __(mo):
 
 
 @app.cell
-def __(dt, dx, multi_diag, np, x):
-    # to_next_u[#next_x, #current_x]
-    to_next_u_ex = (
-        np.eye(x.size) + dt * multi_diag([1, -2, 1], size=x.size) / dx**2
-    )[1:-1, :]
-    to_next_u_ex[:5, :5]
-    return (to_next_u_ex,)
+def __(Solver, multi_diag, np):
+    class SolverExplicit(Solver):
+        def post_init(self) -> None:
+            # to_next_u[#next_x, #current_x]
+            self.to_next_u = (
+                np.eye(self.x.size)
+                + self.dt * multi_diag([1, -2, 1], size=self.x.size) / self.dx**2
+            )[1:-1, :]
+
+        def step(self, t) -> None:
+            self.u[1:-1, t] = self.to_next_u @ self.u[:, t - 1]
+    return (SolverExplicit,)
 
 
 @app.cell
-def __(setup_conditions, t, to_next_u_ex, x):
-    # u[#x, #t]
-    u_ex = setup_conditions(t, x)
-
-    for _n, _t in enumerate(t):
-        if _n == 0:
-            continue
-
-        u_ex[1:-1, _n] = to_next_u_ex @ u_ex[:, _n - 1]
-    return (u_ex,)
+def __(SolverExplicit, t, x):
+    solver_ex = SolverExplicit(t=t, x=x)
+    solver_ex.to_next_u
+    return (solver_ex,)
 
 
 @app.cell
-def __(plot_surface, t, u_ex, x):
-    plot_surface(t, x, u_ex, title="近似解")
+def __(solver_ex):
+    solver_ex.solve()
     return
 
 
 @app.cell
-def __(plot_surface, ref, t, u_ex, x):
-    plot_surface(t, x, u_ex - ref(t, x), title="误差")
+def __(plot_surface, solver_ex, t, x):
+    plot_surface(t, x, solver_ex.u, title="近似解")
     return
 
 
 @app.cell
-def __(np, ref, t, u_ex, x):
-    np.abs(u_ex - ref(t, x)).max()
+def __(plot_surface, ref, solver_ex, t, x):
+    plot_surface(t, x, solver_ex.u - ref(t, x), title="误差")
+    return
+
+
+@app.cell
+def __(np, ref, solver_ex, t, x):
+    np.abs(solver_ex.u - ref(t, x)).max()
     return
 
 
@@ -259,71 +229,73 @@ def __(mo):
 
 
 @app.cell
-def __(dt, dx, multi_diag, np, x):
-    # to_previous_u[#previous_x, #current_x] (without boundary)
-    to_previous_u_im = (
-        np.eye(x.size - 2) - dt * multi_diag([1, -2, 1], size=x.size - 2) / dx**2
-    )
-    to_previous_u_im
-    return (to_previous_u_im,)
+def __(Solver, linalg, multi_diag, np):
+    class SolverImplicit(Solver):
+        def post_init(self) -> None:
+            # to_previous_u[#previous_x, #current_x] (without boundary)
+            self.to_previous_u = (
+                np.eye(self.x.size - 2)
+                - self.dt
+                * multi_diag([1, -2, 1], size=self.x.size - 2)
+                / self.dx**2
+            )
+            self.to_previous_u_inv = linalg.inv(self.to_previous_u)
+
+            self.rhs = np.zeros(self.x.size - 2)
+
+        def step(self, t) -> None:
+            # RHS is derived from the equation in “validate”
+            self.rhs[:] = self.u[1:-1, t - 1]
+            self.rhs[0] += self.dt * self.u[0, t] / self.dx**2
+            self.rhs[-1] += self.dt * self.u[-1, t] / self.dx**2
+
+            self.u[1:-1, t] = self.to_previous_u_inv @ self.rhs
+
+        def validate(self, t: int) -> None:
+            # to_previous_u[#previous_x, #current_x] (only with current boundary)
+            to_previous_u = (
+                np.eye(self.x.size)
+                - self.dt * multi_diag([1, -2, 1], size=self.x.size) / self.dx**2
+            )[1:-1, :]
+            # to_previous_u (only with current boundary) @ current_x (with boundary) = previous_x (without boundary)
+            assert (
+                np.abs(to_previous_u @ self.u[:, t] - self.u[1:-1, t - 1]).max()
+                < 1e-6
+            )
+    return (SolverImplicit,)
 
 
 @app.cell
-def __(
-    dt,
-    dx,
-    linalg,
-    multi_diag,
-    np,
-    setup_conditions,
-    t,
-    to_previous_u_im,
-    x,
-):
-    # u[#x, #t]
-    u_im = setup_conditions(t, x)
-
-    _inv = linalg.inv(to_previous_u_im)
-
-    _rhs = np.zeros(x.size - 2)
-
-    for _n, _t in enumerate(t):
-        if _n == 0:
-            continue
-
-        # RHS is derived from the “check” equation below
-        _rhs[:] = u_im[1:-1, _n - 1]
-        _rhs[0] += dt * u_im[0, _n] / dx**2
-        _rhs[-1] += dt * u_im[-1, _n] / dx**2
-
-        u_im[1:-1, _n] = _inv @ _rhs
-
-    # Check
-
-    # to_previous_u[#previous_x, #current_x] (only with current boundary)
-    _to_previous_u = (
-        np.eye(x.size) - dt * multi_diag([1, -2, 1], size=x.size) / dx**2
-    )[1:-1, :]
-    # to_previous_u (only with current boundary) @ current_x (with boundary) = previous_x (without boundary)
-    assert np.abs(_to_previous_u @ u_im[:, _n] - u_im[1:-1, _n - 1]).max() < 1e-6
-    return (u_im,)
+def __(SolverImplicit, t, x):
+    solver_im = SolverImplicit(t=t, x=x)
+    solver_im.to_previous_u
+    return (solver_im,)
 
 
 @app.cell
-def __(plot_surface, t, u_im, x):
-    plot_surface(t, x, u_im, title="近似解")
+def __(solver_im):
+    solver_im.solve()
+
+    # Validate the last `t`
+    solver_im.validate(solver_im.t.size - 1)
     return
 
 
 @app.cell
-def __(plot_surface, ref, t, u_im, x):
-    plot_surface(t, x, u_im - ref(t, x), title="误差")
+def __(plot_surface, solver_im, t, x):
+    plot_surface(t, x, solver_im.u, title="近似解")
     return
 
 
 @app.cell
-def __(np, ref, t, u_im, x):
-    np.abs(u_im - ref(t, x)).max()
+def __(plot_surface, ref, solver_im, t, x):
+    plot_surface(t, x, solver_im.u - ref(t, x), title="误差")
+    return
+
+
+@app.cell
+def __(np, ref, solver_im, t, x):
+    np.abs(solver_im.u - ref(t, x)).max()
     return
 
 
