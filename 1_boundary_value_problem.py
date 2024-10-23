@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.8.20"
+__generated_with = "0.9.10"
 app = marimo.App(width="medium")
 
 
@@ -28,9 +28,6 @@ def __():
 @app.cell
 def __():
     from matplotlib import pyplot as plt
-
-    plt.rcParams["font.family"] = "Source Han Serif CN"
-    plt.rcParams["mathtext.fontset"] = "cm"
     return (plt,)
 
 
@@ -85,74 +82,17 @@ def __(mo):
 
 
 @app.cell
-def __(multi_diag):
+def __():
+    from util import multi_diag, typst
+
     multi_diag([1, 2, 3], size=5)
-    return
-
-
-@app.cell(hide_code=True)
-def __(np):
-    from collections.abc import Collection
-
-
-    def multi_diag(coefficients: Collection[int], /, size: int) -> np.array:
-        """三/多对角阵"""
-        assert len(coefficients) % 2 == 1
-        half_diag = (len(coefficients) - 1) // 2
-        assert half_diag < size
-
-        return sum(
-            np.diagflat(c * np.ones(size - abs(k)), k=k)
-            for k, c in enumerate(coefficients, start=-half_diag)
-        )
-    return Collection, multi_diag
+    return multi_diag, typst
 
 
 @app.cell
 def __(mo, typst):
     mo.md(r"$\frac12 y = \mathcal{L} y$"), typst(r"$1/2 y = cal(L) y$")
     return
-
-
-@app.cell(hide_code=True)
-def __(mo):
-    from functools import cache
-    from subprocess import CalledProcessError, run
-    from sys import stderr
-    from tempfile import TemporaryFile
-
-
-    @cache
-    def _typst_compile(
-        typ: str,
-        *,
-        prelude="#set page(width: auto, height: auto, margin: 10pt)\n",
-        format="svg",
-    ) -> bytes:
-        """Compile a Typst document
-
-        https://github.com/marimo-team/marimo/discussions/2441
-        """
-        with TemporaryFile() as f:
-            try:
-                run(
-                    # Support for stdout is implemented, but not released yet
-                    # https://github.com/typst/typst/pull/3632
-                    ["typst", "compile", "-", f.name, "--format", format],
-                    input=(prelude + typ).encode(),
-                    check=True,
-                    capture_output=True,
-                )
-                return f.read()
-            except CalledProcessError as err:
-                stderr.write(err.stderr.decode())
-                raise err
-
-
-    def typst(typ: str) -> mo.Html:
-        """Write typst"""
-        return mo.Html(_typst_compile(typ).decode())
-    return CalledProcessError, TemporaryFile, cache, run, stderr, typst
 
 
 @app.cell(hide_code=True)
