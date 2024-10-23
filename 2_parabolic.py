@@ -325,21 +325,23 @@ def __(mo):
 @app.cell
 def __(SolverImplicit, benchmark, benchmark_kwargs, mo):
     with mo.persistent_cache("stat_im"):
-        timing_im, error_im = benchmark(SolverImplicit, **benchmark_kwargs)
-    timing_im, error_im
-    return error_im, timing_im
+        stat_im = benchmark(SolverImplicit, **benchmark_kwargs)
+    stat_im
+    return (stat_im,)
 
 
 @app.cell(hide_code=True)
-def __(error_im, plt, sns, timing_im):
-    _fig, _axs = plt.subplots(nrows=2, sharex=True)
+def __(plt, sns, stat_im):
+    _fig, _axs = plt.subplots(nrows=3, layout='constrained')
 
-    sns.lineplot(ax=_axs[0], data=timing_im, x="dx", y="时长", markers=True)
-    _axs[0].set_ylabel("时长 / s")
-    sns.lineplot(ax=_axs[1], data=error_im, x="dx", y="最大误差", markers=True)
+    sns.lineplot(ax=_axs[0], data=stat_im, x="dx", y="最大误差", markers=True)
+    _axs[0].set_xlabel(r"$\mathrm{d}x$")
+    sns.lineplot(ax=_axs[1], data=stat_im, x="dx", y="时长", markers=True)
+    _axs[1].set_xlabel(r"$\mathrm{d}x$")
+    sns.lineplot(ax=_axs[2], data=stat_im, x="时长", y="最大误差", markers=True)
+    _axs[2].set_xlabel("时长 / s")
 
     for _ax in _axs:
-        _ax.set_xlabel(r"$\mathrm{d}x$")
         _ax.set_xscale("log")
         _ax.set_yscale("log")
         _ax.grid(True)

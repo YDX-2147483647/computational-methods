@@ -142,12 +142,11 @@ def benchmark(
     x_max: float,
     dx_list: Collection[float],
     dt: float = 0.01,
-) -> tuple[DataFrame, DataFrame]:
+) -> DataFrame:
     """Benchmark
 
     Returns:
-        `timing`: 列为dx、时长
-        `error`: 列为dx、最大误差
+        列为dx、最大误差、时长
     """
     # (dx, durations, max error)[]
     stat: deque[tuple[float, deque[float], float]] = deque()
@@ -161,13 +160,7 @@ def benchmark(
         timing = solver.timing()
         stat.append((dx, timing, solver.max_error()))
 
-    return (
-        DataFrame(
-            [[dx, duration] for (dx, timing, _) in stat for duration in timing],
-            columns=["dx", "时长"],
-        ),
-        DataFrame(
-            [[dx, error] for (dx, _, error) in stat],
-            columns=["dx", "最大误差"],
-        ),
+    return DataFrame(
+        [[dx, error, duration] for (dx, timing, error) in stat for duration in timing],
+        columns=["dx", "最大误差", "时长"],
     )
