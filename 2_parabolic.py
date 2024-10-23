@@ -262,7 +262,7 @@ def __(Solver, linalg, multi_diag, np):
             )
             self.to_previous_u_inv = linalg.inv(self.to_previous_u)
 
-            self.rhs = np.zeros(self.x.size - 2)
+            self.rhs = np.empty(self.x.size - 2)
 
         def step(self, t) -> None:
             # RHS is derived from the equation in “validate”
@@ -353,7 +353,79 @@ def __(plt, sns, stat_im):
 
 @app.cell(hide_code=True)
 def __(mo):
-    mo.md(r"""## 2 CN格式""")
+    mo.md(r"""## 2 CN格式（`cn`）""")
+    return
+
+
+@app.cell
+def __(Solver, linalg, multi_diag, np):
+    class SolverCrankNicolson(Solver):
+        def post_init(self) -> None:
+            # (∂²/∂x²)[[#x_current_without_boundary, #x_previous_with_boundary]
+            self.dv_x_2_previous = (
+                multi_diag([1, -2, 1], size=self.x.size)[1:-1, :] / self.dx**2
+            )
+
+            # a_current[#previous_x, #current_x] (without boundary)
+            a_current = (
+                -np.eye(self.x.size - 2) / self.dt
+                + multi_diag([1, -2, 1], size=self.x.size - 2) / self.dx**2 / 2
+            )
+            self.a_current_inv = linalg.inv(a_current)
+
+            self.rhs = np.empty(self.x.size - 2)
+
+        def step(self, t) -> None:
+            # A @ u_current + boundary terms + A' @ u_previous = 0
+
+            self.rhs[:] = (
+                self.u[1:-1, t - 1] / self.dt
+                + self.dv_x_2_previous @ self.u[:, t - 1] / 2
+            )
+
+            self.rhs[0] += self.u[0, t] / self.dx**2 / 2
+            self.rhs[-1] += self.u[-1, t] / self.dx**2 / 2
+
+            self.u[1:-1, t] = self.a_current_inv @ -self.rhs
+
+        def validate(self, t: int) -> None:
+            # (∂²/∂x²)[#x_without_boundary, #x_with_boundary]
+            dv_x_2 = multi_diag([1, -2, 1], size=self.x.size)[1:-1, :] / self.dx**2
+            # (approximate ∂²u/∂x²)[#x_without_boundary]
+            approx_dv_x_2 = dv_x_2 @ (self.u[:, t] + self.u[:, t - 1]) / 2
+            # (approximate ∂u/∂t)[[#x_without_boundary]
+            approx_dv_t = (self.u[1:-1, t] - self.u[1:-1, t - 1]) / self.dt
+            assert np.abs(approx_dv_t - approx_dv_x_2).max() < 1e-6
+    return (SolverCrankNicolson,)
+
+
+@app.cell
+def __(SolverCrankNicolson, t, x):
+    solver_cn = SolverCrankNicolson(t=t, x=x)
+    solver_cn.solve()
+
+    # Validate the last `t`
+    solver_cn.validate(solver_cn.t.size - 1)
+
+    solver_cn.dv_x_2_previous
+    return (solver_cn,)
+
+
+@app.cell
+def __(plot_surface, solver_cn, t, x):
+    plot_surface(t, x, solver_cn.u, title="近似解")
+    return
+
+
+@app.cell
+def __(plot_surface, solver_cn, t, x):
+    plot_surface(t, x, solver_cn.error(), title="误差")
+    return
+
+
+@app.cell
+def __(solver_cn):
+    solver_cn.max_error()
     return
 
 
