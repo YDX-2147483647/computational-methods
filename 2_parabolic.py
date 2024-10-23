@@ -332,14 +332,16 @@ def __(SolverImplicit, benchmark, benchmark_kwargs, mo):
 
 @app.cell(hide_code=True)
 def __(plt, sns, stat_im):
-    _fig, _axs = plt.subplots(nrows=3, layout='constrained')
+    _fig, _axs = plt.subplots(nrows=3, layout="constrained")
 
     sns.lineplot(ax=_axs[0], data=stat_im, x="dx", y="最大误差", markers=True)
     _axs[0].set_xlabel(r"$\mathrm{d}x$")
     sns.lineplot(ax=_axs[1], data=stat_im, x="dx", y="时长", markers=True)
     _axs[1].set_xlabel(r"$\mathrm{d}x$")
-    sns.lineplot(ax=_axs[2], data=stat_im, x="时长", y="最大误差", markers=True)
-    _axs[2].set_xlabel("时长 / s")
+    _axs[2].set_ylabel("时长 / s")
+    # 时长需要计算误差线，必须放到纵轴
+    sns.lineplot(ax=_axs[2], data=stat_im, y="时长", x="最大误差", markers=True)
+    _axs[2].set_ylabel("时长 / s")
 
     for _ax in _axs:
         _ax.set_xscale("log")
