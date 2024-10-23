@@ -28,7 +28,14 @@ def __():
 @app.cell
 def __():
     from matplotlib import pyplot as plt, cm
-    return cm, plt
+    import seaborn as sns
+    return cm, plt, sns
+
+
+@app.cell
+def __():
+    from collections import deque
+    return (deque,)
 
 
 @app.cell(hide_code=True)
@@ -154,8 +161,21 @@ def __(plot_surface, ref, t, x):
 
 @app.cell
 def __():
-    from parabolic_pde import ref, setup_conditions, Solver
-    return Solver, ref, setup_conditions
+    from parabolic_pde import ref, setup_conditions, Solver, benchmark
+    return Solver, benchmark, ref, setup_conditions
+
+
+@app.cell
+def __(np, t_max, t_min, x_max, x_min):
+    benchmark_kwargs = dict(
+        x_max=x_max,
+        x_min=x_min,
+        t_max=t_max,
+        t_min=t_min,
+        dx_list=2.0 ** np.arange(-10, -2, 1),
+        dt=0.01,
+    )
+    return (benchmark_kwargs,)
 
 
 @app.cell(hide_code=True)
@@ -194,14 +214,9 @@ def __(Solver, multi_diag, np):
 @app.cell
 def __(SolverExplicit, t, x):
     solver_ex = SolverExplicit(t=t, x=x)
+    solver_ex.solve()
     solver_ex.to_next_u
     return (solver_ex,)
-
-
-@app.cell
-def __(solver_ex):
-    solver_ex.solve()
-    return
 
 
 @app.cell
@@ -211,20 +226,26 @@ def __(plot_surface, solver_ex, t, x):
 
 
 @app.cell
-def __(plot_surface, ref, solver_ex, t, x):
-    plot_surface(t, x, solver_ex.u - ref(t, x), title="误差")
+def __(plot_surface, solver_ex, t, x):
+    plot_surface(t, x, solver_ex.error(), title="误差")
     return
 
 
 @app.cell
-def __(np, ref, solver_ex, t, x):
-    np.abs(solver_ex.u - ref(t, x)).max()
+def __(solver_ex):
+    solver_ex.max_error()
     return
 
 
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""## 1 最简隐格式（`im`）""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### 单次""")
     return
 
 
@@ -268,17 +289,13 @@ def __(Solver, linalg, multi_diag, np):
 @app.cell
 def __(SolverImplicit, t, x):
     solver_im = SolverImplicit(t=t, x=x)
-    solver_im.to_previous_u
-    return (solver_im,)
-
-
-@app.cell
-def __(solver_im):
     solver_im.solve()
 
     # Validate the last `t`
     solver_im.validate(solver_im.t.size - 1)
-    return
+
+    solver_im.to_previous_u
+    return (solver_im,)
 
 
 @app.cell
@@ -288,14 +305,45 @@ def __(plot_surface, solver_im, t, x):
 
 
 @app.cell
-def __(plot_surface, ref, solver_im, t, x):
-    plot_surface(t, x, solver_im.u - ref(t, x), title="误差")
+def __(plot_surface, solver_im, t, x):
+    plot_surface(t, x, solver_im.error(), title="误差")
     return
 
 
 @app.cell
-def __(np, ref, solver_im, t, x):
-    np.abs(solver_im.u - ref(t, x)).max()
+def __(solver_im):
+    solver_im.max_error()
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### 统计性能""")
+    return
+
+
+@app.cell
+def __(SolverImplicit, benchmark, benchmark_kwargs, mo):
+    with mo.persistent_cache("stat_im"):
+        timing_im, error_im = benchmark(SolverImplicit, **benchmark_kwargs)
+    timing_im, error_im
+    return error_im, timing_im
+
+
+@app.cell(hide_code=True)
+def __(error_im, plt, sns, timing_im):
+    _fig, _axs = plt.subplots(nrows=2, sharex=True)
+
+    sns.lineplot(ax=_axs[0], data=timing_im, x="dx", y="时长", markers=True)
+    _axs[0].set_ylabel("时长 / s")
+    sns.lineplot(ax=_axs[1], data=error_im, x="dx", y="最大误差", markers=True)
+
+    for _ax in _axs:
+        _ax.set_xlabel(r"$\mathrm{d}x$")
+        _ax.set_xscale("log")
+        _ax.set_yscale("log")
+        _ax.grid(True)
+    _fig
     return
 
 
