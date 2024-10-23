@@ -155,7 +155,7 @@ def __(plot_surface, ref, t, x):
 @app.cell
 def __(mo, np):
     @mo.cache
-    def ref(t: np.array, x: np.array) -> np.array:
+    def ref(t: np.ndarray, x: np.ndarray) -> np.ndarray:
         """真解
 
         Params:
@@ -172,7 +172,7 @@ def __(mo, np):
 
 @app.cell
 def __(np):
-    def setup_conditions(t: np.array, x: np.array) -> np.array:
+    def setup_conditions(t: np.ndarray, x: np.ndarray) -> np.ndarray:
         """根据初始条件、边界条件准备预备解
 
         Params:

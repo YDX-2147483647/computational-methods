@@ -429,7 +429,7 @@ def __(l_by_c_ls, linalg, n_ls, np, ns_ls):
 
 @app.cell
 def __(c_ls, np, ns_ls):
-    def ls(x: np.array) -> np.array:
+    def ls(x: np.ndarray) -> np.ndarray:
         """Calculate y by least squares"""
         assert x.ndim == 1
         return c_ls @ x ** ns_ls[:, np.newaxis]
@@ -441,7 +441,7 @@ def __(c_ls, np, ns_ls):
     _n = ns_ls[:, np.newaxis]
 
 
-    def ls_dv_2(x: np.array) -> np.array:
+    def ls_dv_2(x: np.ndarray) -> np.ndarray:
         """Calculate y'' by least squares"""
         assert x.ndim == 1
 
@@ -765,7 +765,7 @@ def __(np, sin, x_max, x_min):
     from scipy.integrate import ode
 
 
-    def f_shoot(x: float, y_z: np.array) -> list[float]:
+    def f_shoot(x: float, y_z: np.ndarray) -> list[float]:
         """(y,z) → (y',z')"""
         return [y_z[1], -y_z[0] - x]
 
