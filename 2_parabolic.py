@@ -498,9 +498,9 @@ def __(typst):
 
 
 @app.cell
-def __(SolverCrankNicolson, np, t_max, t_min, x_max, x_min):
+def __(SolverCrankNicolson, dt_gate, np, t_max, t_min, x_max, x_min):
     solver_gate = SolverCrankNicolson(
-        t=np.arange(t_min, t_max, 0.002),
+        t=np.arange(t_min, t_max, dt_gate.value),
         x=np.linspace(x_min, x_max, 20),
     )
 
@@ -516,9 +516,39 @@ def __(SolverCrankNicolson, np, t_max, t_min, x_max, x_min):
     return (solver_gate,)
 
 
-@app.cell
+@app.cell(hide_code=True)
+def __(mo):
+    dt_gate = mo.ui.dropdown(
+        {str(v): v for v in [0.001, 0.002, 0.008, 0.016, 0.032]},
+        "0.016",
+        label=r"$\mathrm{d}t =$",
+        allow_select_none=False,
+    )
+    dt_gate
+    return (dt_gate,)
+
+
+@app.cell(hide_code=True)
 def __(plot_surface, solver_gate):
-    plot_surface(solver_gate.t, solver_gate.x, solver_gate.u, title="近似解")
+    plot_surface(
+        solver_gate.t,
+        solver_gate.x,
+        solver_gate.u,
+        title="近似解",
+        invert_t_axis=False,
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(
+        r"""
+        边界条件为零，$u$ 逐渐衰减。为避免初始条件遮挡，这里反转了 $t$ 轴。
+
+        ——总之出现振荡了。
+        """
+    )
     return
 
 

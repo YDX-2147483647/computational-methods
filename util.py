@@ -58,7 +58,12 @@ def multi_diag(coefficients: Collection[int], /, size: int) -> np.ndarray | Lite
 
 
 def plot_surface(
-    t: np.ndarray, x: np.ndarray, u: np.ndarray, title: str | None = None, **kwargs
+    t: np.ndarray,
+    x: np.ndarray,
+    u: np.ndarray,
+    title: str | None = None,
+    invert_t_axis=True,
+    **kwargs,
 ) -> tuple[Figure, Axes3D]:
     """个人习惯版`Axes3D.plot_surface`
 
@@ -66,6 +71,8 @@ def plot_surface(
         t[#t]
         x[#x]
         u[#x, #t]
+        title
+        invert_t_axis: 是否反转t轴。有时反转可避免遮挡，更清晰
     """
     assert t.ndim == 1
     assert x.ndim == 1
@@ -74,7 +81,7 @@ def plot_surface(
     ax: Axes3D
     fig, ax = subplots(layout="constrained", subplot_kw={"projection": "3d"})  # type: ignore
     ax.plot_surface(t[np.newaxis, :], x[:, np.newaxis], u, cmap=cm.coolwarm, **kwargs)
-    ax.xaxis.set_inverted(True)
+    ax.xaxis.set_inverted(invert_t_axis)
     ax.set_xlabel("$t$")
     ax.set_ylabel("$x$")
     ax.set_zlabel("$u$")
