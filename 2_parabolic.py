@@ -542,7 +542,7 @@ def __(SolverCrankNicolson, dt_gate, np, t_max, t_min, x_max, x_min):
 def __(mo):
     dt_gate = mo.ui.dropdown(
         {str(v): v for v in [0.001, 0.002, 0.008, 0.016, 0.032]},
-        "0.016",
+        "0.032",
         label=r"$\mathrm{d}t =$",
         allow_select_none=False,
     )
@@ -557,6 +557,19 @@ def __(plot_surface, solver_gate):
         solver_gate.x,
         solver_gate.u,
         title="近似解",
+        invert_t_axis=False,
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def __(plot_surface, solver_gate):
+    _concerned = (0.1 < solver_gate.t) & (solver_gate.t < 0.3)
+    plot_surface(
+        solver_gate.t[_concerned],
+        solver_gate.x,
+        solver_gate.u[:, _concerned],
+        title="近似解（局部放大）",
         invert_t_axis=False,
     )
     return
