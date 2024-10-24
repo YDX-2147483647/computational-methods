@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import deque
 from time import perf_counter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 import marimo as mo
 import numpy as np
@@ -54,14 +54,51 @@ def setup_conditions(t: np.ndarray, x: np.ndarray) -> np.ndarray:
     return u
 
 
-class Solver(ABC):
+class _Solvable(Protocol):
+    u: np.ndarray
+    t: np.ndarray
+    x: np.ndarray
+
+    def solve(self) -> None: ...
+
+
+class _PerformanceMixin(_Solvable):
+    def error(self) -> np.ndarray:
+        return self.u - ref(self.t, self.x)
+
+    def max_error(self) -> float:
+        return np.abs(self.error()).max()
+
+    def timing(self, *, number: int = 10, repeat: int = 7) -> deque[float]:
+        """Measure the time of `solve`
+
+        Params:
+            `number`: number of executions
+            `repeat`: repeat count
+
+        Returns:
+            average duration of an execution of each repetition, in seconds.
+        """
+
+        durations: deque[float] = deque()
+
+        for _ in range(repeat):
+            start = perf_counter()
+            for _ in range(number):
+                self.solve()
+            durations.append((perf_counter() - start) / number)
+
+        return durations
+
+
+class Solver(_PerformanceMixin, ABC):
     """PDE solver
 
     init (and post_init) → solve
     """
 
-    dx: float
-    dt: float
+    dx: Final[float]
+    dt: Final[float]
 
     # x[#x]
     x: Final[np.ndarray]
@@ -109,33 +146,6 @@ class Solver(ABC):
         Raise an `AssertionError` if invalid.
         """
         pass
-
-    def error(self) -> np.ndarray:
-        return self.u - ref(self.t, self.x)
-
-    def max_error(self) -> float:
-        return np.abs(self.error()).max()
-
-    def timing(self, *, number: int = 10, repeat: int = 7) -> deque[float]:
-        """Measure the time of `solve`
-
-        Params:
-            `number`: number of executions
-            `repeat`: repeat count
-
-        Returns:
-            average duration of an execution of each repetition, in seconds.
-        """
-
-        durations: deque[float] = deque()
-
-        for _ in range(repeat):
-            start = perf_counter()
-            for _ in range(number):
-                self.solve()
-            durations.append((perf_counter() - start) / number)
-
-        return durations
 
 
 def benchmark(

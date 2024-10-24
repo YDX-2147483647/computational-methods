@@ -25,6 +25,12 @@ def __():
     return linalg, np
 
 
+@app.cell
+def __():
+    from typing import override
+    return (override,)
+
+
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""## 工具函数""")
@@ -190,8 +196,9 @@ def __(mo):
 
 
 @app.cell
-def __(Solver, multi_diag, np):
+def __(Solver, multi_diag, np, override):
     class SolverExplicit(Solver):
+        @override
         def post_init(self) -> None:
             # to_next_u[#next_x, #current_x]
             self.to_next_u = (
@@ -199,6 +206,7 @@ def __(Solver, multi_diag, np):
                 + self.dt * multi_diag([1, -2, 1], size=self.x.size) / self.dx**2
             )[1:-1, :]
 
+        @override
         def step(self, t) -> None:
             self.u[1:-1, t] = self.to_next_u @ self.u[:, t - 1]
     return (SolverExplicit,)
@@ -243,8 +251,9 @@ def __(mo):
 
 
 @app.cell
-def __(Solver, linalg, multi_diag, np):
+def __(Solver, linalg, multi_diag, np, override):
     class SolverImplicit(Solver):
+        @override
         def post_init(self) -> None:
             # to_previous_u[#previous_x, #current_x] (without boundary)
             self.to_previous_u = (
@@ -257,6 +266,7 @@ def __(Solver, linalg, multi_diag, np):
 
             self.rhs = np.empty(self.x.size - 2)
 
+        @override
         def step(self, t) -> None:
             # RHS is derived from the equation in “validate”
             self.rhs[:] = self.u[1:-1, t - 1]
@@ -265,6 +275,7 @@ def __(Solver, linalg, multi_diag, np):
 
             self.u[1:-1, t] = self.to_previous_u_inv @ self.rhs
 
+        @override
         def validate(self, t: int) -> None:
             # to_previous_u[#previous_x, #current_x] (only with current boundary)
             to_previous_u = (
@@ -343,8 +354,9 @@ def __(mo):
 
 
 @app.cell
-def __(Solver, linalg, multi_diag, np):
+def __(Solver, linalg, multi_diag, np, override):
     class SolverCrankNicolson(Solver):
+        @override
         def post_init(self) -> None:
             # (∂²/∂x²)[[#x_current_without_boundary, #x_previous_with_boundary]
             self.dv_x_2_previous = (
@@ -360,6 +372,7 @@ def __(Solver, linalg, multi_diag, np):
 
             self.rhs = np.empty(self.x.size - 2)
 
+        @override
         def step(self, t) -> None:
             # A @ u_current + boundary terms + A' @ u_previous = 0
 
@@ -373,6 +386,7 @@ def __(Solver, linalg, multi_diag, np):
 
             self.u[1:-1, t] = self.a_current_inv @ -self.rhs
 
+        @override
         def validate(self, t: int) -> None:
             # (∂²/∂x²)[#x_without_boundary, #x_with_boundary]
             dv_x_2 = multi_diag([1, -2, 1], size=self.x.size)[1:-1, :] / self.dx**2
