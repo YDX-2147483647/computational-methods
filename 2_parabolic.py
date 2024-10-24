@@ -33,7 +33,7 @@ def __(mo):
 
 @app.cell
 def __():
-    from util import multi_diag, typst, plot_surface
+    from util import multi_diag, plot_surface, typst
     return multi_diag, plot_surface, typst
 
 
@@ -149,11 +149,11 @@ def __(plot_surface, ref, t, x):
 @app.cell
 def __():
     from parabolic_pde import (
-        ref,
-        setup_conditions,
         Solver,
         benchmark,
         plot_benchmark,
+        ref,
+        setup_conditions,
     )
     return Solver, benchmark, plot_benchmark, ref, setup_conditions
 

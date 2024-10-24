@@ -12,3 +12,10 @@ dependencies = [
     "scipy>=1.14.1",
     "seaborn>=0.13.2",
 ]
+
+[tool.ruff.lint]
+extend-select = ["I", "TYP"]
+
+[tool.ruff.format]
+# For notebooks, use marimo to call ruff instead
+exclude = ["[0123456789]*.py"]
