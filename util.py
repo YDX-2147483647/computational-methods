@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from mpl_toolkits.mplot3d.axes3d import Axes3D
 
 
-@mo.cache
 def _typst_compile(
     typ: str,
     *,
