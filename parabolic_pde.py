@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import deque
 from time import perf_counter
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, override
 
 import marimo as mo
 import numpy as np
@@ -13,7 +13,7 @@ from seaborn import lineplot
 
 if TYPE_CHECKING:
     from collections.abc import Collection
-    from typing import Final
+    from typing import Callable, Final
 
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
@@ -146,6 +146,97 @@ class Solver(_PerformanceMixin, ABC):
         Raise an `AssertionError` if invalid.
         """
         pass
+
+
+class AdaptiveSolver(_PerformanceMixin, ABC):
+    """PDE solver with adaptive time step
+
+    init (and post_init) → solve
+    """
+
+    dx: Final[float]
+
+    # x[#x]
+    x: Final[np.ndarray]
+
+    t_min: Final[float]
+    t_max: Final[float]
+    dt: float
+
+    # t[#t]
+    t: deque[float]
+
+    # u[#t][#x]
+    u: deque[np.ndarray]
+
+    u_boundary: Final[tuple[Callable[[float], float], Callable[[float], float]]]
+
+    def __init__(
+        self,
+        *,
+        t: tuple[float, float, float],
+        x: np.ndarray,
+        u_initial: np.ndarray,
+        u_boundary: tuple[Callable[[float], float], Callable[[float], float]],
+    ) -> None:
+        """
+        Params:
+            t: (min, max, initial step)
+            x[#x]
+            u_initial[#x]
+            u_boundary: (t ⇒ u(t, x_min), t ⇒ u(t, x_max))
+        """
+        assert x.ndim == 1
+        assert u_initial.ndim == 1
+
+        self.dx = np.diff(x).mean()
+        self.x = x
+
+        (self.t_min, self.t_max, self.dt) = t
+        self.t = deque([self.t_min])
+
+        self.u = deque([u_initial])
+        self.u_boundary = u_boundary
+
+        self.post_init()
+
+    def post_init(self) -> None:
+        """Prepare after `__init__`"""
+        pass
+
+    @abstractmethod
+    def step(self) -> None:
+        """Append next u, t, and update dt"""
+        pass
+
+    def solve(self) -> None:
+        """Solve u"""
+        while self.t[-1] < self.t_max:
+            self.step()
+
+    def validate(self, t: int) -> None:
+        """Validate the PDE at `t`
+
+        An optional abstract method.
+
+        Params:
+            t: The index in `t`.
+
+        Raise an `AssertionError` if invalid.
+        """
+        pass
+
+    @override
+    def error(self) -> np.ndarray:
+        return self.u_array() - ref(self.t_array(), self.x)
+
+    def u_array(self) -> np.ndarray:
+        """u[#x, #t]"""
+        return np.array(list(self.u)).T
+
+    def t_array(self) -> np.ndarray:
+        """t[#t]"""
+        return np.array(list(self.t))
 
 
 def benchmark(

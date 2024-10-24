@@ -155,13 +155,21 @@ def __(plot_surface, ref, t, x):
 @app.cell
 def __():
     from parabolic_pde import (
+        AdaptiveSolver,
         Solver,
         benchmark,
         plot_benchmark,
         ref,
         setup_conditions,
     )
-    return Solver, benchmark, plot_benchmark, ref, setup_conditions
+    return (
+        AdaptiveSolver,
+        Solver,
+        benchmark,
+        plot_benchmark,
+        ref,
+        setup_conditions,
+    )
 
 
 @app.cell
@@ -493,7 +501,7 @@ def __(mo):
 
 @app.cell(hide_code=True)
 def __(mo):
-    mo.md(r"""### 更改条件""")
+    mo.md(r"""### 更改条件（`gate`）""")
     return
 
 
@@ -575,6 +583,107 @@ def __(mo):
         ### 法一：自适应时间步长
         """
     )
+    return
+
+
+@app.cell
+def __(AdaptiveSolver, linalg, multi_diag, np, override):
+    class AdaptiveSolverCrankNicolson(AdaptiveSolver):
+        @override
+        def post_init(self) -> None:
+            # (∂²/∂x²)[[#x_current_without_boundary, #x_previous_with_boundary]
+            self.dv_x_2_previous = (
+                multi_diag([1, -2, 1], size=self.x.size)[1:-1, :] / self.dx**2
+            )
+
+            # a_current[#previous_x, #current_x] (without boundary)
+            a_current = (
+                -np.eye(self.x.size - 2) / self.dt
+                + multi_diag([1, -2, 1], size=self.x.size - 2) / self.dx**2 / 2
+            )
+            self.a_current_inv = linalg.inv(a_current)
+
+            self.rhs = np.empty(self.x.size - 2)
+
+        @override
+        def step(self) -> None:
+            # A @ u_current + boundary terms + A' @ u_previous = 0
+
+            # Next t
+            t = self.t[-1] + self.dt
+
+            # Prepare next u
+            u = np.zeros(self.x.size)
+            u[0] = self.u_boundary[0](t)
+            u[-1] = self.u_boundary[1](t)
+
+            self.rhs[:] = (
+                self.u[-1][1:-1] / self.dt + self.dv_x_2_previous @ self.u[-1] / 2
+            )
+
+            self.rhs[0] += u[0] / self.dx**2 / 2
+            self.rhs[-1] += u[-1] / self.dx**2 / 2
+
+            u[1:-1] = self.a_current_inv @ -self.rhs
+
+            # TODO: 确认不振荡再更新
+            self.u.append(u)
+            self.t.append(t)
+
+        @override
+        def validate(self, t: int) -> None:
+            # (∂²/∂x²)[#x_without_boundary, #x_with_boundary]
+            dv_x_2 = multi_diag([1, -2, 1], size=self.x.size)[1:-1, :] / self.dx**2
+            # (approximate ∂²u/∂x²)[#x_without_boundary]
+            approx_dv_x_2 = dv_x_2 @ (self.u[t] + self.u[t - 1]) / 2
+            # (approximate ∂u/∂t)[[#x_without_boundary]
+            approx_dv_t = (self.u[t][1:-1] - self.u[t - 1][1:-1]) / self.dt
+            assert np.abs(approx_dv_t - approx_dv_x_2).max() < 1e-6
+    return (AdaptiveSolverCrankNicolson,)
+
+
+@app.cell
+def __(
+    AdaptiveSolverCrankNicolson,
+    dt_gate,
+    np,
+    t_max,
+    t_min,
+    x_max,
+    x_min,
+):
+    _x = np.linspace(x_min, x_max, 20)
+    solver_gate_adaptive = AdaptiveSolverCrankNicolson(
+        t=(t_min, t_max, dt_gate.value),
+        x=_x,
+        u_initial=(1 / 3 < _x) & (_x < 2 / 3),
+        u_boundary=(lambda t: 0, lambda t: 0),
+    )
+
+    solver_gate_adaptive.solve()
+
+    # Validate the last `t`
+    solver_gate_adaptive.validate(-1)
+
+    solver_gate_adaptive.t[-1]
+    return (solver_gate_adaptive,)
+
+
+@app.cell(hide_code=True)
+def __(plot_surface, solver_gate_adaptive):
+    plot_surface(
+        solver_gate_adaptive.t_array(),
+        solver_gate_adaptive.x,
+        solver_gate_adaptive.u_array(),
+        title="近似解",
+        invert_t_axis=False,
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""不过不能看误差，因为不清楚真解。""")
     return
 
 
