@@ -613,10 +613,14 @@ def __(plt, solver_gate):
 
 @app.cell(hide_code=True)
 def __(mo):
+    mo.md(r"""## 4 消除振荡""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
     mo.md(
         r"""
-        ## 4 消除振荡
-
         ### 法一：自适应时间步长
 
         首先要检测振荡。振荡在时间、空间上都有，主要是检测时间上的。
@@ -921,6 +925,112 @@ def __(mo):
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""### 法二：加权平均""")
+    return
+
+
+@app.cell
+def __(SolverCrankNicolson, np, override):
+    class SolverCrankNicolsonWeighted(SolverCrankNicolson):
+        @override
+        def post_init(self) -> None:
+            super().post_init()
+
+            # 书上权重加起来不是一，会发散；这里改了
+            self.weight = np.array([1, 1, 2]) / 4
+
+        @override
+        def step(self, t) -> None:
+            super().step(t)
+
+            if t >= 2:
+                self.u[1:-1, t] = self.u[1:-1, t - 2 : t + 1] @ self.weight
+    return (SolverCrankNicolsonWeighted,)
+
+
+@app.cell
+def __(
+    SolverCrankNicolsonWeighted,
+    dt_gate,
+    np,
+    t_max,
+    t_min,
+    x_max,
+    x_min,
+):
+    solver_gate_weighted = SolverCrankNicolsonWeighted(
+        t=np.arange(t_min, t_max, dt_gate.value),
+        x=np.linspace(x_min, x_max, 20),
+    )
+
+    # 另设初始条件
+    solver_gate_weighted.u[:, 0] = (1 / 3 < solver_gate_weighted.x) & (
+        solver_gate_weighted.x < 2 / 3
+    )
+    solver_gate_weighted.u[0, :] = 0
+    solver_gate_weighted.u[-1, :] = 0
+
+    solver_gate_weighted.solve()
+    return (solver_gate_weighted,)
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""差分方程并不严格满足，故不再`validate`。""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(dt_gate):
+    dt_gate
+    return
+
+
+@app.cell(hide_code=True)
+def __(plot_surface, solver_gate_weighted):
+    plot_surface(
+        solver_gate_weighted.t,
+        solver_gate_weighted.x,
+        solver_gate_weighted.u,
+        title="近似解",
+        invert_t_axis=False,
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def __(plot_surface, solver_gate_weighted):
+    _concerned = (0.1 < solver_gate_weighted.t) & (solver_gate_weighted.t < 0.3)
+    plot_surface(
+        solver_gate_weighted.t[_concerned],
+        solver_gate_weighted.x,
+        solver_gate_weighted.u[:, _concerned],
+        title="近似解（局部放大）",
+        invert_t_axis=False,
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def __(plt, solver_gate_weighted):
+    _x_range = slice(4, 9)
+    _t_range = solver_gate_weighted.t < 0.3
+
+    _fig, _ax = plt.subplots()
+    _ax.plot(
+        solver_gate_weighted.t[_t_range],
+        solver_gate_weighted.u[_x_range, _t_range].T,
+        label=[f"$x = {_x:.2f}$" for _x in solver_gate_weighted.x[_x_range]],
+    )
+    _ax.set_xlabel("$t$")
+    _ax.set_ylabel("$u$")
+    _ax.grid(True)
+    _ax.legend()
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""振荡倒是没了，解的真实性却也变弱了……`╮(╯▽╰)╭`""")
     return
 
 
