@@ -45,8 +45,8 @@ def __(mo):
 
 @app.cell
 def __():
-    from util import multi_diag, plot_surface, typst
-    return multi_diag, plot_surface, typst
+    from util import multi_diag, plot_surface, show_files, typst
+    return multi_diag, plot_surface, show_files, typst
 
 
 @app.cell
@@ -1031,6 +1031,18 @@ def __(plt, solver_gate_weighted):
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""振荡倒是没了，解的真实性却也变弱了……`╮(╯▽╰)╭`""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""## 附录""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(show_files):
+    show_files(["pyproject.toml", "parabolic_pde.py", "util.py"])
     return
 
 

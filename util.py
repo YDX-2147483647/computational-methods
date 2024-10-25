@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from subprocess import CalledProcessError, run
 from sys import stderr
 from typing import TYPE_CHECKING
@@ -11,7 +12,7 @@ from matplotlib.pyplot import subplots
 
 if TYPE_CHECKING:
     from collections.abc import Collection
-    from typing import Literal
+    from typing import Iterable, Literal
 
     from matplotlib.figure import Figure
     from mpl_toolkits.mplot3d.axes3d import Axes3D
@@ -89,6 +90,24 @@ def plot_surface(
         ax.set_title(title)
 
     return fig, ax
+
+
+def show_files(files: Iterable[str | Path]) -> mo.Html:
+    # Using it directly will break marimo's markdown parser
+    code = "```"
+
+    return mo.md(
+        "\n\n".join(
+            f"""
+### `{f.name}`
+
+{code}{f.suffix.removeprefix('.')}
+{f.read_text(encoding='utf8')}
+{code}
+"""
+            for f in map(Path, files)
+        )
+    )
 
 
 if __name__ == "__main__":
