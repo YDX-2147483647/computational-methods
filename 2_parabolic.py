@@ -630,6 +630,12 @@ def __(mo):
 
 
 @app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""#### 单次""")
+    return
+
+
+@app.cell(hide_code=True)
 def __(dt_gate):
     dt_gate
     return
@@ -918,13 +924,90 @@ def __(plt, solver_gate_adaptive):
 
 @app.cell(hide_code=True)
 def __(mo):
-    mo.md(r"""不过不能看误差，因为真解不太好写出来。""")
+    mo.md(
+        r"""
+        不过不能看误差，因为真解不太好写出来。
+
+        还是看一下解原问题时的误差。
+        """
+    )
+    return
+
+
+@app.cell
+def __(AdaptiveSolverCrankNicolson, dt, np, t_max, t_min, x):
+    solver_adaptive = AdaptiveSolverCrankNicolson(
+        t=(t_min, t_max, dt),
+        x=x,
+        u_initial=np.exp(-x),
+        u_boundary=(np.exp, lambda t: np.exp(t - 1)),
+    )
+
+    solver_adaptive.solve()
+
+    # Validate the last `t`
+    solver_adaptive.validate(-1)
+    return (solver_adaptive,)
+
+
+@app.cell(hide_code=True)
+def __(plot_surface, solver_adaptive, x):
+    plot_surface(
+        solver_adaptive.t_array(), x, solver_adaptive.u_array(), title="近似解"
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def __(plot_surface, solver_adaptive, x):
+    plot_surface(
+        solver_adaptive.t_array(), x, solver_adaptive.error(), title="误差"
+    )
+    return
+
+
+@app.cell
+def __(solver_adaptive):
+    solver_adaptive.max_error()
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""#### 按原问题统计性能""")
+    return
+
+
+@app.cell
+def __(AdaptiveSolverCrankNicolson, benchmark, benchmark_kwargs, mo):
+    with mo.persistent_cache("stat_adaptive"):
+        stat_adaptive = benchmark(AdaptiveSolverCrankNicolson, **benchmark_kwargs)
+    stat_adaptive
+    return (stat_adaptive,)
+
+
+@app.cell(hide_code=True)
+def __(plot_benchmark, stat_adaptive):
+    _fig, _axs = plot_benchmark(stat_adaptive)
+    _fig
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""由于自动增大 $\mathrm{d}t$，时长整体变小了，而误差却没有明显变坏。""")
     return
 
 
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""### 法二：加权平均""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""#### 单次""")
     return
 
 
@@ -1031,6 +1114,33 @@ def __(plt, solver_gate_weighted):
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""振荡倒是没了，解的真实性却也变弱了……`╮(╯▽╰)╭`""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""#### 按原问题统计性能""")
+    return
+
+
+@app.cell
+def __(SolverCrankNicolsonWeighted, benchmark, benchmark_kwargs, mo):
+    with mo.persistent_cache("stat_weighted"):
+        stat_weighted = benchmark(SolverCrankNicolsonWeighted, **benchmark_kwargs)
+    stat_weighted
+    return (stat_weighted,)
+
+
+@app.cell(hide_code=True)
+def __(plot_benchmark, stat_weighted):
+    _fig, _axs = plot_benchmark(stat_weighted)
+    _fig
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""加权之后误差太大了，和 $\mathrm{d}x$ 的关系随机……""")
     return
 
 

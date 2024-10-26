@@ -240,7 +240,7 @@ class AdaptiveSolver(_PerformanceMixin, ABC):
 
 
 def benchmark(
-    solver_cls: type[Solver],
+    solver_cls: type[Solver | AdaptiveSolver],
     *,
     t_min: float,
     t_max: float,
@@ -254,6 +254,8 @@ def benchmark(
     Returns:
         列为dx、最大误差、时长
     """
+    assert issubclass(solver_cls, (Solver, AdaptiveSolver))
+
     # (dx, durations, max error)[]
     stat: deque[tuple[float, deque[float], float]] = deque()
 
@@ -262,7 +264,15 @@ def benchmark(
         x = np.arange(x_min, x_max + dx, dx)
         t = np.arange(t_min, t_max + dt, dt)
 
-        solver = solver_cls(x=x, t=t)
+        if issubclass(solver_cls, Solver):
+            solver = solver_cls(x=x, t=t)
+        else:
+            solver = solver_cls(
+                t=(t_min, t_max, dt),
+                x=x,
+                u_initial=np.exp(-x),
+                u_boundary=(np.exp, lambda t: np.exp(t - 1)),
+            )
         timing = solver.timing()
         stat.append((dx, timing, solver.max_error()))
 
