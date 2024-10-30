@@ -1019,7 +1019,7 @@ def __(SolverCrankNicolson, np, override):
             super().post_init()
 
             # 书上权重加起来不是一，会发散；这里改了
-            self.weight = np.array([1, 1, 2]) / 4
+            self.weight = np.array([1, 2, 1]) / 4
 
         @override
         def step(self, t) -> None:
