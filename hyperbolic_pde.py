@@ -6,13 +6,18 @@ from typing import TYPE_CHECKING
 
 import marimo as mo
 import numpy as np
+from matplotlib.pyplot import subplots
 from numpy import newaxis
 from pandas import DataFrame
+from seaborn import lineplot
 
 from parabolic_pde import _Solvable
 
 if TYPE_CHECKING:
     from typing import Collection, Final
+
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
 
 
 def setup_conditions(t: np.ndarray, x: np.ndarray) -> np.ndarray:
@@ -149,3 +154,23 @@ def benchmark(
         [[dt, dx, error] for (dt, dx, error) in stat],
         columns=["dt", "dx", "最大误差"],
     )
+
+
+def plot_benchmark(data: DataFrame) -> tuple[Figure, Axes]:
+    """Plot the benchmark result
+
+    Params:
+        `df`: Output of `benchmark()`
+    """
+    fig, axs = subplots(nrows=2, layout="constrained")
+
+    lineplot(ax=axs[0], data=data, x="dx", y="最大误差", markers=True)
+    axs[0].set_xlabel(r"$\mathrm{d}x$")
+    lineplot(ax=axs[1], data=data, x="dt", y="最大误差", markers=True)
+    axs[1].set_xlabel(r"$\mathrm{d}t$")
+
+    for ax in axs:
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.grid(True)
+    return fig, axs
