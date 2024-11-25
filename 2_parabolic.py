@@ -372,7 +372,7 @@ def __(Solver, linalg, multi_diag, np, override):
     class SolverCrankNicolson(Solver):
         @override
         def post_init(self) -> None:
-            # (∂²/∂x²)[[#x_current_without_boundary, #x_previous_with_boundary]
+            # (∂²/∂x²)[#x_current_without_boundary, #x_previous_with_boundary]
             self.dv_x_2_previous = (
                 multi_diag([1, -2, 1], size=self.x.size)[1:-1, :] / self.dx**2
             )
@@ -406,7 +406,7 @@ def __(Solver, linalg, multi_diag, np, override):
             dv_x_2 = multi_diag([1, -2, 1], size=self.x.size)[1:-1, :] / self.dx**2
             # (approximate ∂²u/∂x²)[#x_without_boundary]
             approx_dv_x_2 = dv_x_2 @ (self.u[:, t] + self.u[:, t - 1]) / 2
-            # (approximate ∂u/∂t)[[#x_without_boundary]
+            # (approximate ∂u/∂t)[#x_without_boundary]
             approx_dv_t = (self.u[1:-1, t] - self.u[1:-1, t - 1]) / self.dt
             assert np.abs(approx_dv_t - approx_dv_x_2).max() < 1e-6
     return (SolverCrankNicolson,)
@@ -725,7 +725,7 @@ def __(AdaptiveSolver, is_trembling, linalg, multi_diag, np, override):
     class AdaptiveSolverCrankNicolson(AdaptiveSolver):
         @override
         def post_init(self) -> None:
-            # (∂²/∂x²)[[#x_current_without_boundary, #x_previous_with_boundary]
+            # (∂²/∂x²)[#x_current_without_boundary, #x_previous_with_boundary]
             self.dv_x_2_previous = (
                 multi_diag([1, -2, 1], size=self.x.size)[1:-1, :] / self.dx**2
             )
@@ -811,7 +811,7 @@ def __(AdaptiveSolver, is_trembling, linalg, multi_diag, np, override):
             dv_x_2 = multi_diag([1, -2, 1], size=self.x.size)[1:-1, :] / self.dx**2
             # (approximate ∂²u/∂x²)[#x_without_boundary]
             approx_dv_x_2 = dv_x_2 @ (self.u[t] + self.u[t - 1]) / 2
-            # (approximate ∂u/∂t)[[#x_without_boundary]
+            # (approximate ∂u/∂t)[#x_without_boundary]
             approx_dv_t = (self.u[t][1:-1] - self.u[t - 1][1:-1]) / self.dt
             assert np.abs(approx_dv_t - approx_dv_x_2).max() < 1e-6
     return (AdaptiveSolverCrankNicolson,)

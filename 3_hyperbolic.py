@@ -264,5 +264,124 @@ def __(SolverFrog, benchmark, benchmark_kwargs, plot_benchmark):
     return
 
 
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(
+        r"""
+        ## 3 Crank–Nicolson（cn）
+
+        试试[`scipy.sparse`](https://docs.scipy.org/doc/scipy/reference/sparse.html)。
+        """
+    )
+    return
+
+
+@app.cell
+def __():
+    from scipy.sparse import diags_array
+    from scipy.sparse.linalg import spsolve
+    return diags_array, spsolve
+
+
+@app.cell
+def __(diags_array, np):
+    diags_array([np.ones(3), np.ones(2) * 2], offsets=[0, 1]) @ [100, 10, 1]
+    return
+
+
+@app.cell
+def __(diags_array):
+    # Broadcasting of scalars is supported (but shape needs to be specified)
+    diags_array([1, 2], offsets=[0, 1], shape=(3, 3)) @ [100, 10, 1]
+    return
+
+
+@app.cell
+def __(Solver, a, diags_array, np, override, spsolve):
+    class SolverCrankNicolson(Solver):
+        @override
+        def post_init(self) -> None:
+            # a_current[#previous_x, #current_x] (without boundary)
+            self.a_current = diags_array(
+                [
+                    1,
+                    self.dt * a / 2 / (2 * self.dx),
+                    -self.dt * a / 2 / (2 * self.dx),
+                ],
+                offsets=[0, 1, -1],
+                shape=(self.x.size - 2, self.x.size - 2),
+                # To perform inversion, first convert to either CSC or CSR format.
+                format="csc",
+            )
+
+            self.rhs = np.empty(self.x.size - 2)
+
+        @override
+        def step(self, t) -> None:
+            # A @ u_current + A' @ u_previous = 0
+
+            self.rhs[:] = -self.u[1:-1, t - 1] + self.dt * a / 2 * (
+                self.u[2:, t - 1] - self.u[:-2, t - 1]
+            ) / (2 * self.dx)
+
+            self.u[1:-1, t] = spsolve(self.a_current, -self.rhs)
+
+        @override
+        def validate(self, t: int) -> None:
+            # (∂/∂x)[#x_without_boundary, #x_with_boundary]
+            dv_x = diags_array(
+                [1, -1], offsets=[0, 2], shape=(self.x.size - 2, self.x.size)
+            ) / (2 * self.dx)
+            # (approximate ∂u/∂x)[#x_without_boundary]
+            approx_dv_x = dv_x @ (self.u[:, t] + self.u[:, t - 1]) / 2
+            # (approximate ∂u/∂t)[#x_without_boundary]
+            approx_dv_t = (self.u[1:-1, t] - self.u[1:-1, t - 1]) / self.dt
+            assert np.allclose(approx_dv_t, a * approx_dv_x)
+    return (SolverCrankNicolson,)
+
+
+@app.cell
+def __(SolverCrankNicolson, t, x):
+    solver_cn = SolverCrankNicolson(t=t, x=x)
+    solver_cn.solve()
+
+    # Validate the last `t`
+    solver_cn.validate(solver_cn.t.size - 1)
+
+    solver_cn.a_current.toarray()
+    return (solver_cn,)
+
+
+@app.cell
+def __(plot_surface, solver_cn, t, x):
+    plot_surface(t, x, solver_cn.u, title="近似解")
+    return
+
+
+@app.cell
+def __(plot_surface, solver_cn, t, x):
+    plot_surface(t, x, solver_cn.error(), title="误差")
+    return
+
+
+@app.cell
+def __(solver_cn):
+    solver_cn.max_error()
+    return
+
+
+@app.cell
+def __(SolverCrankNicolson, benchmark, benchmark_kwargs, plot_benchmark):
+    _b = benchmark(SolverCrankNicolson, **benchmark_kwargs)
+    plot_benchmark(_b)[0]
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""为何毛刺这么多？！`┗|｀O′|┛`""")
+    return
+
+
 if __name__ == "__main__":
     app.run()
