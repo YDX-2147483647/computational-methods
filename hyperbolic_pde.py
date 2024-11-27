@@ -63,6 +63,9 @@ class _PerformanceMixin(_Solvable):
     def max_error(self) -> float:
         return np.abs(self.error()).max()
 
+    def mean_error(self) -> float:
+        return np.abs(self.error()).mean()
+
 
 class Solver(_PerformanceMixin, ABC):
     """PDE solver
@@ -133,11 +136,11 @@ def benchmark(
     """Benchmark
 
     Returns:
-        列为dt、dx、最大误差
+        列为dt、dx、平均误差
     """
     assert issubclass(solver_cls, Solver)
 
-    # (dt, dx, max_error)[]
+    # (dt, dx, mean_error)[]
     stat: deque[tuple[float, float, float]] = deque()
 
     for dt, dx in mo.status.progress_bar(dt_dx_list):  # type: ignore
@@ -148,11 +151,11 @@ def benchmark(
 
         solver = solver_cls(x=x, t=t)
         solver.solve()
-        stat.append((dt, dx, solver.max_error()))
+        stat.append((dt, dx, solver.mean_error()))
 
     return DataFrame(
         [[dt, dx, error] for (dt, dx, error) in stat],
-        columns=["dt", "dx", "最大误差"],
+        columns=["dt", "dx", "平均误差"],
     )
 
 
@@ -164,9 +167,9 @@ def plot_benchmark(data: DataFrame) -> tuple[Figure, Axes]:
     """
     fig, axs = subplots(nrows=2, layout="constrained")
 
-    lineplot(ax=axs[0], data=data, x="dx", y="最大误差", markers=True)
+    lineplot(ax=axs[0], data=data, x="dx", y="平均误差", markers=True)
     axs[0].set_xlabel(r"$\mathrm{d}x$")
-    lineplot(ax=axs[1], data=data, x="dt", y="最大误差", markers=True)
+    lineplot(ax=axs[1], data=data, x="dt", y="平均误差", markers=True)
     axs[1].set_xlabel(r"$\mathrm{d}t$")
 
     for ax in axs:

@@ -182,13 +182,25 @@ def __(plot_surface, solver_wind, t, x):
 
 @app.cell(hide_code=True)
 def __(mo):
-    mo.md(r"""毛刺太多了。""")
+    mo.md(
+        r"""
+        为何毛刺这么多？！`┗|｀O′|┛`
+
+        毛刺太影响最大误差了，大家都是 $2$ 的量级，指标无效。我们后面改用平均误差评估。
+        """
+    )
     return
 
 
 @app.cell
 def __(solver_wind):
     solver_wind.max_error()
+    return
+
+
+@app.cell
+def __(solver_wind):
+    solver_wind.mean_error()
     return
 
 
@@ -254,6 +266,12 @@ def __(plot_surface, solver_frog, t, x):
 @app.cell
 def __(solver_frog):
     solver_frog.max_error()
+    return
+
+
+@app.cell
+def __(solver_frog):
+    solver_frog.mean_error()
     return
 
 
@@ -371,15 +389,15 @@ def __(solver_cn):
 
 
 @app.cell
-def __(SolverCrankNicolson, benchmark, benchmark_kwargs, plot_benchmark):
-    _b = benchmark(SolverCrankNicolson, **benchmark_kwargs)
-    plot_benchmark(_b)[0]
+def __(solver_cn):
+    solver_cn.mean_error()
     return
 
 
-@app.cell(hide_code=True)
-def __(mo):
-    mo.md(r"""为何毛刺这么多？！`┗|｀O′|┛`""")
+@app.cell
+def __(SolverCrankNicolson, benchmark, benchmark_kwargs, plot_benchmark):
+    _b = benchmark(SolverCrankNicolson, **benchmark_kwargs)
+    plot_benchmark(_b)[0]
     return
 
 
