@@ -256,6 +256,74 @@ def __(Solver, ref, x, y):
 
 
 @app.cell(hide_code=True)
+def __(Axes, Collection, Figure, Solver, mo, np, plt):
+    from collections import deque
+
+    from pandas import DataFrame
+    from seaborn import lineplot
+
+
+    def benchmark(
+        solver_cls: type[Solver],
+        *,
+        dx_dy_list: Collection[tuple[float, float]],
+    ) -> DataFrame:
+        """Benchmark
+
+        Returns:
+            列为dx、dy、最大误差
+        """
+        assert issubclass(solver_cls, Solver)
+
+        # (dx, dy, max_error)[]
+        stat: deque[tuple[float, float, float]] = deque()
+
+        for dx, dy in mo.status.progress_bar(dx_dy_list):  # type: ignore
+            dx: float
+            dy: float
+            x = np.arange(1, 2 + dx, dx)
+            y = np.arange(0, 1 + dy, dy)
+
+            solver = solver_cls(x=x, y=y)
+            solver.solve()
+            stat.append((dx, dy, solver.max_error()))
+
+        return DataFrame(
+            list(stat),
+            columns=["dx", "dy", "最大误差"],
+        )
+
+
+    def plot_benchmark(data: DataFrame) -> tuple[Figure, Axes]:
+        """Plot the benchmark result
+
+        Params:
+            `df`: Output of `benchmark()`
+        """
+        fig, axs = plt.subplots(nrows=2, layout="constrained")
+
+        lineplot(ax=axs[0], data=data, x="dx", y="最大误差", markers=True)
+        axs[0].set_xlabel(r"$\mathrm{d}x$")
+        lineplot(ax=axs[1], data=data, x="dy", y="最大误差", markers=True)
+        axs[1].set_xlabel(r"$\mathrm{d}y$")
+
+        for ax in axs:
+            ax.set_xscale("log")
+            ax.set_yscale("log")
+            ax.grid(True)
+        return fig, axs
+    return DataFrame, benchmark, deque, lineplot, plot_benchmark
+
+
+@app.cell
+def __(np):
+    benchmark_kwargs = dict(
+        dx_dy_list=[(_dx, _dx) for _dx in 2.0 ** np.arange(-4, -1, 1)],
+    )
+    return (benchmark_kwargs,)
+
+
+@app.cell(hide_code=True)
 def __(mo):
     mo.md(
         r"""
@@ -378,6 +446,25 @@ def __(plot_surface, solver_5, x, y):
 @app.cell
 def __(solver_5):
     solver_5.max_error()
+    return
+
+
+@app.cell
+def __(Solver_5, benchmark, benchmark_kwargs, plot_benchmark):
+    _b = benchmark(Solver_5, **benchmark_kwargs)
+    plot_benchmark(_b)[0]
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(
+        r"""
+        ## 2 九点格式
+
+        这回用稀疏矩阵试试。
+        """
+    )
     return
 
 

@@ -133,7 +133,7 @@ def benchmark(
     """Benchmark
 
     Returns:
-        列为dx、最大误差、时长
+        列为dt、dx、最大误差
     """
     assert issubclass(solver_cls, Solver)
 
