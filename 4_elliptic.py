@@ -297,7 +297,9 @@ def __(Axes, Collection, Figure, Solver, mo, np, plt):
         )
 
 
-    def plot_benchmark(data: DataFrame) -> tuple[Figure, Axes]:
+    def plot_benchmark(
+        data: DataFrame, title: str | None = None
+    ) -> tuple[Figure, Axes]:
         """Plot the benchmark result
 
         Params:
@@ -314,6 +316,10 @@ def __(Axes, Collection, Figure, Solver, mo, np, plt):
             ax.set_xscale("log")
             ax.set_yscale("log")
             ax.grid(True)
+
+        if title is not None:
+            fig.suptitle(title)
+
         return fig, axs
     return DataFrame, benchmark, deque, lineplot, plot_benchmark
 
@@ -329,6 +335,12 @@ def __(np):
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""## 1 五点""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### 开发""")
     return
 
 
@@ -472,7 +484,7 @@ def __(mo):
 @app.cell
 def __(Solver_5, benchmark, benchmark_kwargs, plot_benchmark):
     _b = benchmark(Solver_5, **benchmark_kwargs)
-    plot_benchmark(_b)[0]
+    plot_benchmark(_b, title="五点")[0]
     return
 
 
@@ -487,6 +499,12 @@ def __(mo):
         > [Sparse arrays currently must be two-dimensional.](https://docs.scipy.org/doc/scipy/reference/sparse.html)
         """
     )
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### 开发""")
     return
 
 
@@ -688,7 +706,7 @@ def __(mo):
 @app.cell
 def __(Solver_9, benchmark, benchmark_kwargs, plot_benchmark):
     _b = benchmark(Solver_9, **benchmark_kwargs)
-    plot_benchmark(_b)[0]
+    plot_benchmark(_b, title="九点")[0]
     return
 
 
