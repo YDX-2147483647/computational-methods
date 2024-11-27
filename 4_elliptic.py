@@ -124,9 +124,14 @@ def __(dx, dy, np):
     return x, y
 
 
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""不能缓存这些函数！因为可能有原地更改的需求。""")
+    return
+
+
 @app.cell
-def __(mo, np, pi, sin):
-    @mo.cache
+def __(np, pi, sin):
     def ref(x: np.ndarray, y: np.ndarray) -> np.ndarray:
         """真解
 
@@ -155,8 +160,7 @@ def __(mo):
 
 
 @app.cell
-def __(mo, np, pi, ref):
-    @mo.cache
+def __(np, pi, ref):
     def ref_rhs(x: np.ndarray, y: np.ndarray) -> np.ndarray:
         """右端项
 
@@ -171,8 +175,7 @@ def __(mo, np, pi, ref):
 
 
 @app.cell
-def __(mo, np, pi, sin):
-    @mo.cache
+def __(np, pi, sin):
     def setup_boundary(x: np.ndarray, y: np.ndarray) -> np.ndarray:
         """根据边界条件准备预备解
 
@@ -575,8 +578,8 @@ def __(Solver, diags_array, eye_array, kron, np, pi, spsolve):
                 + corner * self.u[2:, :: self.y.size - 1]
             )
 
-            # RHS 要改成 f + 1/12 (h ∇)² f = (1 + 1/12 (h (π²-1))²) f
-            self.rhs *= 1 + (self.dx * (pi**2 - 1)) ** 2 / 12
+            # RHS 要改成 f + 1/12 (h ∇)² f = (1 + h²/12 (1-π²)) f
+            self.rhs *= 1 + self.dx**2 / 12 * (1 - pi**2)
 
         def solve(self) -> None:
             self.u[1:-1, 1:-1].flat = spsolve(
