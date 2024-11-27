@@ -113,7 +113,7 @@ def __(typst):
 @app.cell
 def __():
     dx = 0.1
-    dy = 0.1
+    dy = 0.05
     return dx, dy
 
 
@@ -194,7 +194,7 @@ def __(mo, np, pi, sin):
 
 
 @app.cell
-def __(np, ref_rhs, setup_conditions):
+def __(np, ref, ref_rhs, setup_boundary):
     class Solver:
         u: np.ndarray
         x: np.ndarray
@@ -214,8 +214,14 @@ def __(np, ref_rhs, setup_conditions):
             self.x = x
             self.y = y
 
-            self.u = setup_conditions(x, y)
+            self.u = setup_boundary(x, y)
             self.rhs = ref_rhs(x, y)
+
+            self.post_init()
+
+        def post_init(self) -> None:
+            """Prepare after `__init__`"""
+            pass
 
         def solve(self) -> None: ...
 
@@ -226,7 +232,18 @@ def __(np, ref_rhs, setup_conditions):
             dv_y_2 = (self.u[:, 2:] + self.u[:, :-2] - 2 * self.u[:, 1:-1])[
                 1:-1, :
             ] / self.dy**2
-            assert np.allclose(dv_x_2 + dv_y_2, self.rhs[1:-1, 1:-1], rtol=1e-2)
+            assert np.allclose(
+                dv_x_2 + dv_y_2,
+                self.rhs[1:-1, 1:-1],
+                # 这里定得很松，这样其它方法的解也能通过验证
+                rtol=1e-2,
+            )
+
+        def error(self) -> np.ndarray:
+            return self.u - ref(self.x, self.y)
+
+        def max_error(self) -> float:
+            return abs(self.error()).max()
     return (Solver,)
 
 
@@ -247,6 +264,120 @@ def __(mo):
         > [Sparse arrays currently must be two-dimensional.](https://docs.scipy.org/doc/scipy/reference/sparse.html)
         """
     )
+    return
+
+
+@app.cell
+def __(Solver, linalg, np):
+    class Solver_5(Solver):
+        def post_init(self) -> None:
+            # x,y without boundaries ← x,y with boundaries
+            t = np.zeros((self.x.size, self.y.size, self.x.size, self.y.size))
+            for i_x in range(1, self.x.size - 1):
+                all_y = np.arange(1, self.y.size - 1)
+                t[i_x, all_y, i_x - 1, all_y] = 1 / self.dx**2
+                t[i_x, all_y, i_x, all_y] = -2 / self.dx**2
+                t[i_x, all_y, i_x + 1, all_y] = 1 / self.dx**2
+            for i_y in range(1, self.y.size - 1):
+                all_x = np.arange(1, self.x.size - 1)
+                t[all_x, i_y, all_x, i_y - 1] += 1 / self.dy**2
+                t[all_x, i_y, all_x, i_y] += -2 / self.dy**2
+                t[all_x, i_y, all_x, i_y + 1] += 1 / self.dy**2
+
+            # x,y without boundaries ← x,y with boundaries
+            self.laplacian = t[1:-1, 1:-1, ...]
+
+            # boundary terms affecting x,y without boundaries
+            self.boundary = np.einsum(
+                "xyuv,uv->xy",
+                # Select x_min and x_max, including the y boundaries
+                self.laplacian[..., :: self.x.size - 1, :],
+                self.u[:: self.x.size - 1, :],
+            ) + np.einsum(
+                "xyuv,uv->xy",
+                # Select y_min and y_max, excluding the x boundaries
+                self.laplacian[..., 1:-1, :: self.y.size - 1],
+                self.u[1:-1, :: self.y.size - 1],
+            )
+
+        def solve(self) -> None:
+            # All to RHS + flatten
+            self.u[1:-1, 1:-1].flat = linalg.solve(
+                self.laplacian[..., 1:-1, 1:-1].reshape(
+                    (-1, (self.x.size - 2) * (self.y.size - 2))
+                ),
+                (self.rhs[1:-1, 1:-1] - self.boundary).flat,
+            )
+
+        def validate(self) -> None:
+            # Original
+            assert np.allclose(
+                np.einsum("xyuv,uv->xy", self.laplacian, self.u),
+                self.rhs[1:-1, 1:-1],
+            )
+
+            # Flatten
+            assert np.allclose(
+                self.laplacian.reshape((-1, self.x.size * self.y.size))
+                @ self.u.flat,
+                self.rhs[1:-1, 1:-1].flat,
+            )
+
+            # Apart
+            assert np.allclose(
+                np.einsum(
+                    "xyuv,uv->xy",
+                    self.laplacian[..., 1:-1, 1:-1],
+                    self.u[1:-1, 1:-1],
+                )
+                + self.boundary,
+                self.rhs[1:-1, 1:-1],
+            )
+
+            # All to RHS
+            assert np.allclose(
+                np.einsum(
+                    "xyuv,uv->xy",
+                    self.laplacian[..., 1:-1, 1:-1],
+                    self.u[1:-1, 1:-1],
+                ),
+                self.rhs[1:-1, 1:-1] - self.boundary,
+            )
+
+            # All to RHS + flatten
+            assert np.allclose(
+                self.laplacian[..., 1:-1, 1:-1].reshape(
+                    (-1, (self.x.size - 2) * (self.y.size - 2))
+                )
+                @ self.u[1:-1, 1:-1].flat,
+                (self.rhs[1:-1, 1:-1] - self.boundary).flat,
+            )
+    return (Solver_5,)
+
+
+@app.cell
+def __(Solver_5, x, y):
+    solver_5 = Solver_5(x=x, y=y)
+    solver_5.solve()
+    solver_5.validate()
+    return (solver_5,)
+
+
+@app.cell
+def __(plot_surface, solver_5, x, y):
+    plot_surface(x, y, solver_5.u, title="近似解")
+    return
+
+
+@app.cell
+def __(plot_surface, solver_5, x, y):
+    plot_surface(x, y, solver_5.error(), title="误差")
+    return
+
+
+@app.cell
+def __(solver_5):
+    solver_5.max_error()
     return
 
 
