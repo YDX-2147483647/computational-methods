@@ -325,13 +325,7 @@ def __(np):
 
 @app.cell(hide_code=True)
 def __(mo):
-    mo.md(
-        r"""
-        ## 1 五点法
-
-        > [Sparse arrays currently must be two-dimensional.](https://docs.scipy.org/doc/scipy/reference/sparse.html)
-        """
-    )
+    mo.md(r"""## 1 五点""")
     return
 
 
@@ -424,6 +418,23 @@ def __(Solver, linalg, np):
 
 
 @app.cell
+def __(Solver_5, np):
+    _x = np.arange(7)
+    _from = Solver_5(x=_x, y=_x).laplacian[2, 2, :]
+    print(_from)
+
+    assert np.count_nonzero(_from) == 5
+    assert np.isclose(_from.sum(), 0)
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### 单次""")
+    return
+
+
+@app.cell
 def __(Solver_5, x, y):
     solver_5 = Solver_5(x=x, y=y)
     solver_5.solve()
@@ -449,6 +460,12 @@ def __(solver_5):
     return
 
 
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### 统计""")
+    return
+
+
 @app.cell
 def __(Solver_5, benchmark, benchmark_kwargs, plot_benchmark):
     _b = benchmark(Solver_5, **benchmark_kwargs)
@@ -460,11 +477,192 @@ def __(Solver_5, benchmark, benchmark_kwargs, plot_benchmark):
 def __(mo):
     mo.md(
         r"""
-        ## 2 九点格式
+        ## 2 九点
 
         这回用稀疏矩阵试试。
+
+        > [Sparse arrays currently must be two-dimensional.](https://docs.scipy.org/doc/scipy/reference/sparse.html)
         """
     )
+    return
+
+
+@app.cell
+def __():
+    from scipy.sparse import diags_array
+    from scipy.sparse.linalg import spsolve
+    return diags_array, spsolve
+
+
+@app.cell(hide_code=True)
+def __(typst):
+    typst(r"""
+    #import "@preview/physica:0.9.3": pdv, laplacian
+
+    首先要处理一下 $h_x != h_y$ 的问题。
+
+    #let xx = $cal(X)$
+    #let yy = $cal(Y)$
+
+    设 $xx := h_x pdv(,x), thick yy := h_y pdv(,y)$，要凑出
+    $ laplacian = (xx / h_x)^2 + (yy / h_y)^2. $
+
+    注意
+    $
+      e^xx - e^(-xx) &= 2 cosh xx &~ 2 (1 + xx^2/2). \
+      e^yy - e^(-yy) &= 2 cosh yy &~ 2 (1 + yy^2/2). \
+
+      e^(xx+yy) + e^(xx-yy) + e^(-xx+yy) + e^(-xx-yy)
+      &= (e^xx + e^(-xx)) (e^yy + e^(-yy))
+      = 4 cosh xx cosh yy
+      &~ 4 (1 + xx^2 / 2 + yy^2 /2). \
+    $
+
+    等一下，真能凑出来吗？
+    """)
+    return
+
+
+@app.cell
+def __(Solver, diags_array, np, pi, spsolve):
+    class Solver_9(Solver):
+        def post_init(self) -> None:
+            assert np.isclose(self.dx, self.dy)
+
+            # without boundaries
+            shape = (self.x.size - 2, self.y.size - 2)
+
+            def merge_xy(x: int, y: int) -> int:
+                # Convert (Δx, Δy) to Δxy,
+                # ≈ ravel_multi_index of NumPy,
+                # but support negative indices
+                return x * shape[1] + y
+
+            center = -10 / 3 / self.dx**2
+            edges = 2 / 3 / self.dx**2
+            corners = 1 / 6 / self.dx**2
+
+            # xy without boundaries ← xy without boundaries
+            self.laplacian = diags_array(
+                [center] + [edges] * 4 + [corners] * 4,
+                offsets=[
+                    # Center
+                    merge_xy(0, 0),
+                    # Edges
+                    merge_xy(1, 0),
+                    merge_xy(-1, 0),
+                    merge_xy(0, 1),
+                    merge_xy(0, -1),
+                    # Corners
+                    merge_xy(1, 1),
+                    merge_xy(1, -1),
+                    merge_xy(-1, -1),
+                    merge_xy(-1, 1),
+                ],
+                shape=2 * (np.prod(shape),),
+                # To perform inversion, first convert to either CSC or CSR format.
+                format="csc",
+            )
+
+            # boundary terms affecting x,y without boundaries
+            self.boundary = np.zeros(shape)
+            # Select x_min and x_max
+            self.boundary[:: shape[0] - 1, :] += (
+                edges * self.rhs[:: self.x.size - 1, 1:-1]
+                + corners * self.rhs[:: self.x.size - 1, :-2]
+                + corners * self.rhs[:: self.x.size - 1, 2:]
+            )
+            # Select y_min and y_max
+            self.boundary[:, :: shape[1] - 1] += (
+                edges * self.u[1:-1, :: self.y.size - 1]
+                + corners * self.u[:-2, :: self.y.size - 1]
+                + corners * self.u[2:, :: self.y.size - 1]
+            )
+
+            # RHS 要改成 f + 1/12 (h ∇)² f = (1 + 1/12 (h (π²-1))²) f
+            self.rhs *= 1 + (self.dx * (pi**2 - 1)) ** 2 / 12
+
+        def solve(self) -> None:
+            self.u[1:-1, 1:-1].flat = spsolve(
+                self.laplacian, (self.rhs[1:-1, 1:-1] - self.boundary).flat
+            )
+
+        def validate(self) -> None:
+            # Apart
+            assert np.allclose(
+                np.einsum(
+                    "xyuv,uv->xy",
+                    self.laplacian.toarray().reshape(
+                        self.x.size - 2,
+                        self.y.size - 2,
+                        self.x.size - 2,
+                        self.y.size - 2,
+                    ),
+                    self.u[1:-1, 1:-1],
+                )
+                + self.boundary,
+                self.rhs[1:-1, 1:-1],
+            )
+    return (Solver_9,)
+
+
+@app.cell
+def __(Solver_9, np):
+    _x = np.arange(7)
+    _from = (
+        Solver_9(x=_x, y=_x)
+        .laplacian.toarray()
+        .reshape((_x.size - 2,) * 4)[1, 2, :]
+    )
+    print(_from)
+
+    assert np.count_nonzero(_from) == 9
+    assert np.isclose(_from.sum(), 0)
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### 单次""")
+    return
+
+
+@app.cell
+def __(Solver_9, x, y):
+    solver_9 = Solver_9(x=y - y[0] + x[0], y=y)
+    solver_9.solve()
+    solver_9.validate()
+    return (solver_9,)
+
+
+@app.cell
+def __(plot_surface, solver_9):
+    plot_surface(solver_9.x, solver_9.y, solver_9.u, title="近似解")
+    return
+
+
+@app.cell
+def __(plot_surface, solver_9):
+    plot_surface(solver_9.x, solver_9.y, solver_9.error(), title="误差")
+    return
+
+
+@app.cell
+def __(solver_9):
+    solver_9.max_error()
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""### 统计""")
+    return
+
+
+@app.cell
+def __(Solver_9, benchmark, benchmark_kwargs, plot_benchmark):
+    _b = benchmark(Solver_9, **benchmark_kwargs)
+    plot_benchmark(_b)[0]
     return
 
 
