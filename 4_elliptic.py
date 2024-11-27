@@ -489,9 +489,9 @@ def __(mo):
 
 @app.cell
 def __():
-    from scipy.sparse import diags_array
+    from scipy.sparse import diags_array, eye_array, kron
     from scipy.sparse.linalg import spsolve
-    return diags_array, spsolve
+    return diags_array, eye_array, kron, spsolve
 
 
 @app.cell(hide_code=True)
@@ -524,59 +524,55 @@ def __(typst):
 
 
 @app.cell
-def __(Solver, diags_array, np, pi, spsolve):
+def __(Solver, diags_array, eye_array, kron, np, pi, spsolve):
     class Solver_9(Solver):
         def post_init(self) -> None:
             assert np.isclose(self.dx, self.dy)
 
             # without boundaries
-            shape = (self.x.size - 2, self.y.size - 2)
-
-            def merge_xy(x: int, y: int) -> int:
-                # Convert (Δx, Δy) to Δxy,
-                # ≈ ravel_multi_index of NumPy,
-                # but support negative indices
-                return x * shape[1] + y
+            n_x = self.x.size - 2
+            n_y = self.y.size - 2
 
             center = -10 / 3 / self.dx**2
-            edges = 2 / 3 / self.dx**2
-            corners = 1 / 6 / self.dx**2
+            edge = 2 / 3 / self.dx**2
+            corner = 1 / 6 / self.dx**2
 
             # xy without boundaries ← xy without boundaries
-            self.laplacian = diags_array(
-                [center] + [edges] * 4 + [corners] * 4,
-                offsets=[
-                    # Center
-                    merge_xy(0, 0),
-                    # Edges
-                    merge_xy(1, 0),
-                    merge_xy(-1, 0),
-                    merge_xy(0, 1),
-                    merge_xy(0, -1),
-                    # Corners
-                    merge_xy(1, 1),
-                    merge_xy(1, -1),
-                    merge_xy(-1, -1),
-                    merge_xy(-1, 1),
-                ],
-                shape=2 * (np.prod(shape),),
-                # To perform inversion, first convert to either CSC or CSR format.
-                format="csc",
-            )
+            self.laplacian = (
+                kron(
+                    # x_out = x_in
+                    eye_array(n_x),
+                    diags_array(
+                        [center, edge, edge],
+                        offsets=[0, -1, 1],  # y_out - y_in
+                        shape=(n_y, n_y),
+                    ),
+                )
+                + kron(
+                    # # x_out = x_in ± 1
+                    diags_array([1, 1], offsets=[-1, 1], shape=(n_x,) * 2),
+                    diags_array(
+                        [edge, corner, corner],
+                        offsets=[0, -1, 1],  # y_out - y_in
+                        shape=(n_y, n_y),
+                    ),
+                )
+            ).tocsc()
+            # To perform inversion, first convert to either CSC or CSR format.
 
             # boundary terms affecting x,y without boundaries
-            self.boundary = np.zeros(shape)
+            self.boundary = np.zeros((n_x, n_y))
             # Select x_min and x_max
-            self.boundary[:: shape[0] - 1, :] += (
-                edges * self.rhs[:: self.x.size - 1, 1:-1]
-                + corners * self.rhs[:: self.x.size - 1, :-2]
-                + corners * self.rhs[:: self.x.size - 1, 2:]
+            self.boundary[:: n_x - 1, :] += (
+                edge * self.u[:: self.x.size - 1, 1:-1]
+                + corner * self.u[:: self.x.size - 1, :-2]
+                + corner * self.u[:: self.x.size - 1, 2:]
             )
             # Select y_min and y_max
-            self.boundary[:, :: shape[1] - 1] += (
-                edges * self.u[1:-1, :: self.y.size - 1]
-                + corners * self.u[:-2, :: self.y.size - 1]
-                + corners * self.u[2:, :: self.y.size - 1]
+            self.boundary[:, :: n_y - 1] += (
+                edge * self.u[1:-1, :: self.y.size - 1]
+                + corner * self.u[:-2, :: self.y.size - 1]
+                + corner * self.u[2:, :: self.y.size - 1]
             )
 
             # RHS 要改成 f + 1/12 (h ∇)² f = (1 + 1/12 (h (π²-1))²) f
@@ -587,20 +583,49 @@ def __(Solver, diags_array, np, pi, spsolve):
                 self.laplacian, (self.rhs[1:-1, 1:-1] - self.boundary).flat
             )
 
+        def ref_laplacian(self) -> np.ndarray:
+            center = -10 / 3 / self.dx**2
+            edges = 2 / 3 / self.dx**2
+            corners = 1 / 6 / self.dx**2
+
+            # x,y without boundaries ← x,y with boundaries
+            t = np.zeros((self.x.size, self.y.size, self.x.size, self.y.size))
+            for i_x in range(1, self.x.size - 1):
+                all_y = np.arange(1, self.y.size - 1)
+                t[i_x, all_y, i_x, all_y] = center
+                t[i_x, all_y, i_x - 1, all_y] = edges
+                t[i_x, all_y, i_x + 1, all_y] = edges
+                t[i_x, all_y, i_x, all_y - 1] = edges
+                t[i_x, all_y, i_x, all_y + 1] = edges
+                t[i_x, all_y, i_x - 1, all_y + 1] = corners
+                t[i_x, all_y, i_x - 1, all_y - 1] = corners
+                t[i_x, all_y, i_x + 1, all_y + 1] = corners
+                t[i_x, all_y, i_x + 1, all_y - 1] = corners
+
+            # x,y without boundaries ← x,y with boundaries
+            return t[1:-1, 1:-1, ...]
+
         def validate(self) -> None:
+            laplacian = self.laplacian.toarray().reshape(
+                self.x.size - 2,
+                self.y.size - 2,
+                self.x.size - 2,
+                self.y.size - 2,
+            )
+            ref_laplacian = self.ref_laplacian()
+
+            assert np.allclose(laplacian, ref_laplacian[..., 1:-1, 1:-1])
+
             # Apart
             assert np.allclose(
-                np.einsum(
-                    "xyuv,uv->xy",
-                    self.laplacian.toarray().reshape(
-                        self.x.size - 2,
-                        self.y.size - 2,
-                        self.x.size - 2,
-                        self.y.size - 2,
-                    ),
-                    self.u[1:-1, 1:-1],
-                )
+                np.einsum("xyuv,uv->xy", laplacian, self.u[1:-1, 1:-1])
                 + self.boundary,
+                self.rhs[1:-1, 1:-1],
+            )
+
+            # Original
+            assert np.allclose(
+                np.einsum("xyuv,uv->xy", ref_laplacian, self.u),
                 self.rhs[1:-1, 1:-1],
             )
     return (Solver_9,)
@@ -609,13 +634,11 @@ def __(Solver, diags_array, np, pi, spsolve):
 @app.cell
 def __(Solver_9, np):
     _x = np.arange(7)
-    _from = (
-        Solver_9(x=_x, y=_x)
-        .laplacian.toarray()
-        .reshape((_x.size - 2,) * 4)[1, 2, :]
-    )
-    print(_from)
+    _l = Solver_9(x=_x, y=_x).laplacian.toarray().reshape((_x.size - 2,) * 4)
+    print(_l[1, 0, ...])
 
+    _from = _l[1, 2, ...]
+    print(_from)
     assert np.count_nonzero(_from) == 9
     assert np.isclose(_from.sum(), 0)
     return
