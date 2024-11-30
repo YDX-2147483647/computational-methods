@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.9.10"
+__generated_with = "0.9.27"
 app = marimo.App(width="medium")
 
 
@@ -707,6 +707,134 @@ def __(mo):
 def __(Solver_9, benchmark, benchmark_kwargs, plot_benchmark):
     _b = benchmark(Solver_9, **benchmark_kwargs)
     plot_benchmark(_b, title="九点")[0]
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(
+        r"""
+        ## 番外
+
+        刘力豪同学告诉我：不写系数矩阵也能解五点或九点格式——迭代求解！这大约归功于椭圆方程的优良性质。
+        """
+    )
+    return
+
+
+@app.cell
+def __(Solver_9, deque, mo, np, pi):
+    class Solver_9_NoMatrix(Solver_9):
+        def post_init(self) -> None:
+            assert np.isclose(self.dx, self.dy)
+
+            # RHS 要改成 f + 1/12 (h ∇)² f = (1 + h²/12 (1-π²)) f
+            self.rhs *= 1 + self.dx**2 / 12 * (1 - pi**2)
+
+            # (difference, error)[]
+            self.steps = deque()
+
+        def solve(self, *, n_steps: int) -> None:
+            center = -10 / 3 / self.dx**2
+            edge = 2 / 3 / self.dx**2
+            corner = 1 / 6 / self.dx**2
+
+            # center + edges + corners = rhs
+
+            for _ in mo.status.progress_bar(range(n_steps)):
+                next_u = (
+                    self.rhs[1:-1, 1:-1]
+                    - edge
+                    * (
+                        self.u[:-2, 1:-1]
+                        + self.u[2:, 1:-1]
+                        + self.u[1:-1, :-2]
+                        + self.u[1:-1, 2:]
+                    )
+                    - corner
+                    * (
+                        self.u[:-2, :-2]
+                        + self.u[2:, :-2]
+                        + self.u[:-2, 2:]
+                        + self.u[2:, 2:]
+                    )
+                ) / center
+                self.steps.append(
+                    (abs(self.u[1:-1, 1:-1] - next_u).max(), self.max_error())
+                )
+                self.u[1:-1, 1:-1] = next_u
+
+        def validate(self) -> None:
+            # Original
+            assert np.allclose(
+                np.einsum("xyuv,uv->xy", self.ref_laplacian(), self.u),
+                self.rhs[1:-1, 1:-1],
+            )
+    return (Solver_9_NoMatrix,)
+
+
+@app.cell
+def __(Solver_9_NoMatrix, x, y):
+    solver_liu = Solver_9_NoMatrix(x=y - y[0] + x[0], y=y)
+    solver_liu.solve(n_steps=1234)
+    solver_liu.validate()
+    return (solver_liu,)
+
+
+@app.cell(hide_code=True)
+def __(plt, solver_5, solver_9, solver_liu):
+    _fig, _ax = plt.subplots()
+    _ax.semilogy(
+        list(solver_liu.steps),
+        label=["迭代前后最大改变量", "最大误差（与真解相比，下同）"],
+    )
+    _ax.set(xlabel="迭代次数")
+    _ax.grid(True)
+    _ax.axhline(
+        y=solver_liu.max_error(),
+        linestyle="--",
+        color="orange",
+        label="最终最大误差",
+    )
+    _ax.axhline(
+        y=solver_9.max_error(),
+        linestyle=":",
+        color="green",
+        label="解方程法的误差",
+    )
+
+    _ax.axhline(
+        y=solver_5.max_error(),
+        linestyle=":",
+        color="purple",
+        label="五点格式的误差",
+    )
+    _ax.legend()
+    _fig
+    return
+
+
+@app.cell
+def __(plot_surface, solver_liu):
+    plot_surface(solver_liu.x, solver_liu.y, solver_liu.u, title="近似解")
+    return
+
+
+@app.cell
+def __(plot_surface, solver_liu):
+    plot_surface(solver_liu.x, solver_liu.y, solver_liu.error(), title="误差")
+    return
+
+
+@app.cell
+def __(solver_liu):
+    solver_liu.max_error()
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""诚不我欺！就是每次迭代只能传递一格，收敛太慢了；而且难以从迭代改变量估计误差，不好确定迭代多少次。""")
     return
 
 
