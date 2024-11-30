@@ -39,8 +39,8 @@ def __():
 
 @app.cell
 def __():
-    from util import typst
-    return (typst,)
+    from util import show_files, typst
+    return show_files, typst
 
 
 @app.cell
@@ -835,6 +835,18 @@ def __(solver_liu):
 @app.cell(hide_code=True)
 def __(mo):
     mo.md(r"""诚不我欺！就是每次迭代只能传递一格，收敛太慢了；而且难以从迭代改变量估计误差，不好确定迭代多少次。""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""## 附录""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(show_files):
+    show_files(["pyproject.toml", "util.py"])
     return
 
 

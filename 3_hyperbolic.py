@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.9.10"
+__generated_with = "0.9.27"
 app = marimo.App(width="medium")
 
 
@@ -51,8 +51,8 @@ def __():
 
 @app.cell
 def __():
-    from util import multi_diag, plot_surface, typst
-    return multi_diag, plot_surface, typst
+    from util import multi_diag, plot_surface, show_files, typst
+    return multi_diag, plot_surface, show_files, typst
 
 
 @app.cell(hide_code=True)
@@ -398,6 +398,18 @@ def __(solver_cn):
 def __(SolverCrankNicolson, benchmark, benchmark_kwargs, plot_benchmark):
     _b = benchmark(SolverCrankNicolson, **benchmark_kwargs)
     plot_benchmark(_b)[0]
+    return
+
+
+@app.cell(hide_code=True)
+def __(mo):
+    mo.md(r"""## 附录""")
+    return
+
+
+@app.cell(hide_code=True)
+def __(show_files):
+    show_files(["pyproject.toml", "hyperbolic_pde.py", "util.py"])
     return
 
 
