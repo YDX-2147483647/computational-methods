@@ -26,6 +26,35 @@ jobs:
         run: |
           npm install -g fd-find
 
+      # Both typst and matplotlib require a proper font
+      - name: Install the font
+        # It installs NotoSansCJK-*.ttc, but matplotlib only supports the first font, i.e. JP.
+        # https://github.com/matplotlib/matplotlib/issues/3135#issuecomment-1169521565
+        run: |
+          sudo apt install -y fonts-noto-cjk
+          sed 's/Source Han Serif CN/Noto Serif CJK JP/' matplotlibrc --in-place
+      - name: Check fonts
+        run: |
+          echo '[typst fonts]'
+          typst fonts
+
+          echo '[matplotlib fonts]'
+          uv run python << EOF
+          from matplotlib.font_manager import fontManager
+          print(*sorted(f.name for f in fontManager.ttflist), sep="\n")
+          EOF
+
+          echo '[matplotlib test]'
+          uv run python << EOF
+          from io import BytesIO
+          from matplotlib import pyplot as plt
+
+          fig, ax = plt.subplots()
+          ax.text(0.5, 0.5, "There are 几个汉字 in between")
+          temp = BytesIO()
+          fig.savefig(temp)
+          EOF
+
       # Check
       - name: Ruff format
         run: uv run ruff format --check
