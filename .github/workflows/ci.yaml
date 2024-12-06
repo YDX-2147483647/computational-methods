@@ -1,0 +1,43 @@
+name: Check and export
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Setup
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.5.6"
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+      - run: uv sync
+      - uses: typst-community/setup-typst@v3
+        with:
+          typst-version: 0.12
+      - name: Install fd
+        run: |
+          npm install -g fd-find
+
+      # Check
+      - name: Ruff format
+        run: uv run ruff format --check
+      - name: Ruff check
+        run: uv run ruff check --output-format=github .
+
+      # Export
+      - name: Marimo export HTML
+        run: |
+          mkdir html/
+          fd '^[0-9]' --extension py --exec uv run marimo export html '{}' --output 'html/{.}.html'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notebook-html
+          path: html/
