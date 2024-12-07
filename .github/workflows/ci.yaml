@@ -22,9 +22,10 @@ jobs:
       - uses: typst-community/setup-typst@v3
         with:
           typst-version: 0.12
-      - name: Install fd
-        run: |
-          npm install -g fd-find
+      - name: Install CLI utilities
+        uses: taiki-e/install-action@v2
+        with:
+          tool: fd-find,sd
 
       # Both typst and matplotlib require a proper font
       - name: Install the font
@@ -70,6 +71,19 @@ jobs:
         with:
           name: notebook-html
           path: html/
+
+      # Prepare pages
+      - name: Prepare the homepage
+        run: sd '\./([0-9].+)\.py' './$1.html' README.md
+      - name: Convert the homepage to HTML
+        uses: docker://pandoc/core:3
+        with:
+          args: >-
+            README.md
+            --metadata title="作业：科学与工程计算"
+            --from gfm
+            --standalone
+            --output html/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: html/
