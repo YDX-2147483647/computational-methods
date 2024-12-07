@@ -2,6 +2,9 @@
 
 2024年9–11月。
 
+[![notebook online](https://img.shields.io/website?url=https%3A%2F%2Fydx-2147483647.github.io%2Fcomputational-methods%2F&up_message=online&up_color=14b8a6&style=for-the-badge&logo=python&label=notebook&labelColor=f2f2f2
+)](https://ydx-2147483647.github.io/computational-methods/)
+
 ```shell
 uv run marimo edit
 ```
